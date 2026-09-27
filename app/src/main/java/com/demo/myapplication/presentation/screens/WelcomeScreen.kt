@@ -1,4 +1,4 @@
-package com.demo.myapplication.ui.screens
+package com.demo.myapplication.presentation.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,14 +26,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.demo.myapplication.ui.theme.ButtonPillShape
-import com.demo.myapplication.ui.theme.GoalAccent
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.demo.myapplication.presentation.theme.ButtonPillShape
+import com.demo.myapplication.presentation.theme.GoalAccent
 
-/**
- * Pure UI shape for one row in the goal-setup list. The caller (eventually a
- * ViewModel reading from Room) is responsible for producing these from real
- * Goal entities — this screen never reads a data source itself.
- */
 data class GoalListItem(
     val name: String,
     val durationLabel: String,

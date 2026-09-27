@@ -1,4 +1,4 @@
-package com.demo.myapplication.ui.screens
+package com.demo.myapplication.presentation.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -27,12 +27,12 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.demo.myapplication.ui.theme.ButtonPillShape
-import com.demo.myapplication.ui.theme.FocusMountainFar
-import com.demo.myapplication.ui.theme.FocusMountainMid
-import com.demo.myapplication.ui.theme.FocusMountainNear
-import com.demo.myapplication.ui.theme.FocusSoftAccent
-import com.demo.myapplication.ui.theme.FocusSunAccent
+import com.demo.myapplication.presentation.theme.ButtonPillShape
+import com.demo.myapplication.presentation.theme.FocusMountainFar
+import com.demo.myapplication.presentation.theme.FocusMountainMid
+import com.demo.myapplication.presentation.theme.FocusMountainNear
+import com.demo.myapplication.presentation.theme.FocusSoftAccent
+import com.demo.myapplication.presentation.theme.FocusSunAccent
 
 @Composable
 fun LandingPage(

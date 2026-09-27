@@ -100,3 +100,17 @@ A running record of the choices made while building this app and *why* — separ
 **Decision:** Button reads "Get Started" (from the provided mockup image) rather than "Start" (the original spec document's placeholder text).
 
 **Rationale:** User explicitly pointed to the image as the visual reference for this screen ("This would be the LandingPage" + screenshot). Where the image and the prose spec disagree on exact wording, the image — being the actual approved design — wins; the prose spec's bracketed labels (`[ Start ]`) were always illustrative placeholders, not final copy.
+
+---
+
+## 9. "Apps to Block" list comes from real installed apps, not a curated/hardcoded set
+
+**Decision:** `GoalConfigScreen`'s block list is populated from the device's actual launchable apps (`InstalledAppsProvider`, querying `PackageManager`), not a fixed list of the six apps shown in the mockup.
+
+**Options considered:**
+- Hardcode the six apps from the mockup (Instagram/YouTube/Reddit/X/Chrome/WhatsApp) as a seed list, with real package names, as a stopgap until a dedicated app-blocking platform module exists.
+- Query real installed apps now.
+
+**Rationale:** User explicitly rejected the seed-list stopgap — same principle as decision 3 (don't hardcode what should come from real device/user state), extended from "goals must come from the DB" to "blockable apps must come from the device." Resolving `Intent.ACTION_MAIN`/`CATEGORY_LAUNCHER` via `PackageManager.queryIntentActivities` returns every launchable app without needing the `QUERY_ALL_PACKAGES` permission or a `<queries>` manifest entry — that specific query is exempt from Android 11+ package-visibility restrictions.
+
+**Known follow-up:** this currently returns *every* launchable app (potentially 100+, including system utilities), unfiltered. Worth revisiting with a filter (e.g. excluding `ApplicationInfo.FLAG_SYSTEM`) once tested on a real device — not done yet since it wasn't part of what was asked.
