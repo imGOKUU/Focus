@@ -1,6 +1,5 @@
 package com.demo.myapplication.presentation.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.darkColorScheme
@@ -44,7 +43,13 @@ private val FocusDarkColorScheme = darkColorScheme(
 
 @Composable
 fun FocusTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    // Not isSystemInDarkTheme(): the approved design only exists in light
+    // mode right now, and there's no Settings > Appearance toggle yet either
+    // (spec section 25) - following the system setting means the app renders
+    // in the undesigned placeholder dark palette on any device/emulator with
+    // system dark mode on, which looks nothing like the approved mockup.
+    // Revisit once a real dark treatment exists and/or that setting is built.
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) FocusDarkColorScheme else FocusLightColorScheme

@@ -7,7 +7,7 @@ val FocusBackground = Color(0xFFF7F5EF)   // cream page background, every screen
 val FocusPrimaryText = Color(0xFF18212B)  // headings, timer digits, primary labels
 val FocusSecondaryText = Color(0xFF66707A) // subtitles, muted labels, timestamps
 val FocusPrimaryDark = Color(0xFF263640)   // filled buttons, active nav icon, dark chrome
-val FocusSoftAccent = Color(0xFFDDE5EC)    // dividers, row separators, ice/track fill
+val FocusSoftAccent = Color(0xFFDDE5EC)    // dividers, row separators, track fill
 val FocusOnPrimaryDark = Color(0xFFF7F5EF) // text/icons on FocusPrimaryDark (cream, not stark white)
 
 // Minimum-mode (immersive) screen — near-black, intentionally low contrast.
@@ -38,8 +38,15 @@ object GoalAccents {
     fun forIndex(index: Int): GoalAccent = defaultCycle[index.mod(defaultCycle.size)]
 }
 
-// Landing screen illustration — flat sun-and-mountain motif from the onboarding mockup.
-val FocusSunAccent = Color(0xFFF0B98F)
-val FocusMountainFar = Color(0xFFCBD5DE)
-val FocusMountainMid = Color(0xFFA7B2BD)
-val FocusMountainNear = Color(0xFF7C8794)
+// Welcome screen illustration — flat sun-and-mountain motif. Exact values
+// from the design canvas's inline CSS, not approximated.
+val FocusSunAccent = Color(0xFFF0B99A)
+val FocusMountainFar = Color(0xFFC9D3DA)
+val FocusMountainMid = Color(0xFFA8B7C2)
+val FocusMountainNear = Color(0xFF8494A0)
+
+// Active session illustration — the melting ice covering the goal-accent-
+// tinted can. No design mockup exists for this screen yet (spec sections
+// 13-15 describe it in prose only) - picked to read as "ice/frost" against
+// the cream background without needing a mockup to match exactly.
+val FocusIceAccent = Color(0xFFEAF3F7)

@@ -2,6 +2,7 @@ package com.demo.myapplication.presentation.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,11 +36,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.demo.myapplication.presentation.components.ResponsiveScreen
+import com.demo.myapplication.presentation.theme.ButtonLabel
 import com.demo.myapplication.presentation.theme.ButtonPillShape
 import com.demo.myapplication.presentation.theme.FocusSoftAccent
 import kotlin.math.abs
@@ -48,7 +53,7 @@ import kotlin.math.abs
  * ViewModel reading real installed apps via InstalledAppsProvider, merged
  * with this goal's saved BlockedApp rows) builds these — this screen never
  * queries anything itself. icon is nullable so a load failure degrades to
- * an initial-letter fallback instead of crashing the row.
+ * an accent-colored initial-letter fallback instead of crashing the row.
  */
 data class BlockableAppItem(
     val appName: String,
@@ -57,10 +62,32 @@ data class BlockableAppItem(
     val isBlocked: Boolean
 )
 
+// Brand colors for the well-known apps shown in the design canvas; anything
+// else falls back to a deterministic (hash-based) pick from the same palette
+// so an unrecognized app still reads as "intentional", not generic gray.
+private val knownAppAccents = mapOf(
+    "com.instagram.android" to Color(0xFFC1447E),
+    "com.google.android.youtube" to Color(0xFFE1483B),
+    "com.reddit.frontpage" to Color(0xFFE06A2C),
+    "com.twitter.android" to Color(0xFF000000),
+    "com.android.chrome" to Color(0xFF4C8BF5),
+    "com.whatsapp" to Color(0xFF3FA96A)
+)
+
+private val fallbackAccentPalette = listOf(
+    Color(0xFFC1447E), Color(0xFFE1483B), Color(0xFFE06A2C),
+    Color(0xFF4C8BF5), Color(0xFF3FA96A), Color(0xFF6B4FA0), Color(0xFF35619E)
+)
+
+private fun BlockableAppItem.fallbackAccentColor(): Color =
+    knownAppAccents[packageName]
+        ?: fallbackAccentPalette[abs(packageName.hashCode()) % fallbackAccentPalette.size]
+
 @Composable
 fun GoalConfigScreen(
     goalName: String,
     onGoalNameChange: (String) -> Unit = {},
+    onBack: () -> Unit = {},
     hourOptions: List<Int> = (0..4).toList(),
     minuteOptions: List<Int> = (0..55 step 5).toList(),
     selectedHours: Int = 1,
@@ -71,29 +98,25 @@ fun GoalConfigScreen(
     onToggleApp: (BlockableAppItem) -> Unit = {},
     onSave: () -> Unit = {}
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 24.dp)
-    ) {
+    ResponsiveScreen {
         Spacer(modifier = Modifier.height(24.dp))
 
         Icon(
             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onBackground
+            tint = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.clickable(onClick = onBack)
         )
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        // Editable rather than the mockup's static title - lets a user
+        // rename a goal inline. (Decision confirmed - see DECISIONS.md.)
         BasicTextField(
             value = goalName,
             onValueChange = onGoalNameChange,
             modifier = Modifier.fillMaxWidth(),
             textStyle = MaterialTheme.typography.headlineLarge.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 26.sp,
                 color = MaterialTheme.colorScheme.onBackground
             ),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -101,10 +124,7 @@ fun GoalConfigScreen(
                 if (goalName.isEmpty()) {
                     Text(
                         text = "Goal name",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 26.sp
-                        ),
+                        style = MaterialTheme.typography.headlineLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -137,20 +157,24 @@ fun GoalConfigScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Column {
-            blockableApps.forEach { app ->
+        // This list is every real launchable app on the device (potentially
+        // 100+, see DECISIONS.md) - it needs its own bounded, independently
+        // scrolling region so a long list can't push the Save button off
+        // screen or require scrolling past it to reach Save. Only this
+        // section scrolls; the name field, picker, and Save button stay put.
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            items(blockableApps, key = { it.packageName }) { app ->
                 AppToggleRow(app = app, onToggle = { onToggleApp(app) })
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = onSave,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
+                .height(48.dp),
             shape = ButtonPillShape,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -159,10 +183,7 @@ fun GoalConfigScreen(
         ) {
             Text(
                 text = "Save",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 16.sp
-                )
+                style = ButtonLabel
             )
         }
 
@@ -178,6 +199,12 @@ private fun SectionLabel(text: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Daily-time picker: two independent scroll-snap wheels (hours x minutes).
+// Structural decision pending re: matching the design canvas's single
+// combined-list look (see DECISIONS.md) - left untouched in this pass.
+// ═══════════════════════════════════════════════════════════════════════
 
 private val WheelItemHeight = 48.dp
 
@@ -289,13 +316,18 @@ private fun Wheel(
 @Composable
 private fun AppToggleRow(app: BlockableAppItem, onToggle: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .size(36.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(10.dp)),
+                .background(
+                    if (app.icon != null) MaterialTheme.colorScheme.surfaceVariant else app.fallbackAccentColor(),
+                    shape = RoundedCornerShape(10.dp)
+                ),
             contentAlignment = Alignment.Center
         ) {
             val icon = app.icon
@@ -309,12 +341,12 @@ private fun AppToggleRow(app: BlockableAppItem, onToggle: () -> Unit) {
                 Text(
                     text = app.appName.take(1).uppercase(),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color.White
                 )
             }
         }
 
-        Spacer(modifier = Modifier.size(12.dp))
+        Spacer(modifier = Modifier.size(11.dp))
 
         Text(
             text = app.appName,
@@ -328,7 +360,11 @@ private fun AppToggleRow(app: BlockableAppItem, onToggle: () -> Unit) {
             onCheckedChange = { onToggle() },
             colors = SwitchDefaults.colors(
                 checkedTrackColor = MaterialTheme.colorScheme.primary,
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                checkedBorderColor = Color.Transparent,
+                uncheckedTrackColor = Color(0xFFDDE5EC),
+                uncheckedThumbColor = Color.White,
+                uncheckedBorderColor = Color.Transparent
             )
         )
     }

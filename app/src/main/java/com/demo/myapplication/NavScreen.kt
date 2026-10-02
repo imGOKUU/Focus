@@ -1,5 +1,6 @@
 package com.demo.myapplication
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -13,11 +14,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.demo.myapplication.data.local.entity.BlockedApp
 import com.demo.myapplication.data.local.entity.Goal
+import com.demo.myapplication.presentation.screens.AddGoalsScreen
 import com.demo.myapplication.presentation.screens.BlockableAppItem
+import com.demo.myapplication.presentation.screens.FocusScreen
 import com.demo.myapplication.presentation.screens.GoalConfigScreen
-import com.demo.myapplication.presentation.screens.LandingPage
 import com.demo.myapplication.presentation.screens.WelcomeScreen
 import com.demo.myapplication.presentation.screens.WelcomeViewModel
 import kotlinx.coroutines.flow.map
@@ -34,13 +38,17 @@ fun NavScreen()
         startDestination = "landing_page"
     ){
         composable("landing_page"){
-            LandingPage(
+            WelcomeScreen(
                 onNavigate = { navController.navigate("home_page") }
             )
         }
         composable("home_page"){
-            WelcomeScreen(
-                goals= goals.value,
+            AddGoalsScreen(
+                goals = goals.value,
+                onBack = { navController.popBackStack() },
+                onGoalClick = { goal->
+                   navController.navigate("focus_screen/${Uri.encode(goal.id)}")
+                },
                 onAddGoal =
                 {
                     navController.navigate("add_goal")
@@ -69,6 +77,7 @@ fun NavScreen()
             GoalConfigScreen(
                 goalName = goalName,
                 onGoalNameChange = { goalName = it },
+                onBack = { navController.popBackStack() },
                 selectedHours = selectedHours,
                 onHoursChange = { selectedHours = it },
                 selectedMinutes = selectedMinutes,
@@ -97,6 +106,25 @@ fun NavScreen()
                     goalViewModel.createGoal(goal, blockedApps)
                     navController.popBackStack()
                 }
+            )
+        }
+        composable(
+            "focus_screen/{goalId}",
+            arguments = listOf(
+                navArgument("goalId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+
+            val goalId =
+                backStackEntry.arguments?.getString("goalId") ?: ""
+ val goal =  goals.value.find { it.id==goalId
+ }
+            FocusScreen(
+                goal =goal,
+                onPause = {},
+                onBack = { navController.popBackStack() }
             )
         }
 

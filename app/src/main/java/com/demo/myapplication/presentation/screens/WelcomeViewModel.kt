@@ -69,7 +69,7 @@ private val installedAppsProvider: InstalledAppsProvider
                 GoalListItem(
                     name = goal.name,
                     accent = goal.color.toGoalAccent(),
-                    durationLabel = goal.dailyDurationSeconds.toString(),
+                    durationLabel = goal.dailyDurationSeconds.toDurationLabel(),
                     icon = goal.icon.toGoalIcon(),
                 )
             }
@@ -81,6 +81,17 @@ private val installedAppsProvider: InstalledAppsProvider
         "green" -> GoalAccents.Green
         "purple" -> GoalAccents.Purple
         else -> GoalAccents.Teal
+    }
+
+    private fun Long.toDurationLabel(): String {
+        val totalMinutes = this / 60
+        val hours = totalMinutes / 60
+        val minutes = totalMinutes % 60
+        return when {
+            hours > 0 && minutes == 0L -> if (hours == 1L) "1 hour" else "$hours hours"
+            hours == 0L -> if (minutes == 1L) "1 minute" else "$minutes minutes"
+            else -> "${hours}h ${minutes}m"
+        }
     }
 
     private fun String.toGoalIcon(): ImageVector = when (this) {

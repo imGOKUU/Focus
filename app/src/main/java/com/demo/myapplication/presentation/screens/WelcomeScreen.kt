@@ -1,7 +1,8 @@
 package com.demo.myapplication.presentation.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,100 +12,76 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.demo.myapplication.presentation.components.ResponsiveScreen
+import com.demo.myapplication.presentation.theme.ButtonLabel
 import com.demo.myapplication.presentation.theme.ButtonPillShape
-import com.demo.myapplication.presentation.theme.GoalAccent
-
-data class GoalListItem(
-    val name: String,
-    val durationLabel: String,
-    val icon: ImageVector,
-    val accent: GoalAccent
-)
+import com.demo.myapplication.presentation.theme.FocusMountainFar
+import com.demo.myapplication.presentation.theme.FocusMountainMid
+import com.demo.myapplication.presentation.theme.FocusMountainNear
+import com.demo.myapplication.presentation.theme.FocusSoftAccent
+import com.demo.myapplication.presentation.theme.FocusSunAccent
+import com.demo.myapplication.presentation.theme.WelcomeHeadline
 
 @Composable
 fun WelcomeScreen(
-    goals: List<GoalListItem> = emptyList(),
-    onAddGoal: () -> Unit = {},
-    onContinue: () -> Unit = {}
+    onNavigate: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 24.dp)
-    ) {
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Icon(
-            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onBackground
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
+    ResponsiveScreen {
+        Spacer(modifier = Modifier.height(64.dp))
 
         Text(
-            text = "What do you want\nto give time to?",
-            style = MaterialTheme.typography.headlineLarge.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-                lineHeight = 30.sp
-            ),
+            text = "Your time.\nYour rules.",
+            style = WelcomeHeadline,
             color = MaterialTheme.colorScheme.onBackground
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Add a few goals. Keep it simple.",
+            text = "Give time to what matters. We'll keep the distractions away.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.widthIn(max = 210.dp)
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        MountainSunIllustration(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
         )
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        Column {
-            goals.forEach { goal ->
-                GoalRow(goal)
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-        }
+        PageIndicator(
+            pageCount = 3,
+            activeIndex = 0,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+        )
 
-        Row(
-            modifier = Modifier.clickable(onClick = onAddGoal),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "+  Add Goal",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(28.dp))
 
         Button(
-            onClick = onContinue,
+            onClick = onNavigate,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
+                .height(48.dp),
             shape = ButtonPillShape,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -112,11 +89,8 @@ fun WelcomeScreen(
             )
         ) {
             Text(
-                text = "Continue",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 16.sp
-                )
+                text = "Get Started",
+                style = ButtonLabel
             )
         }
 
@@ -125,38 +99,90 @@ fun WelcomeScreen(
 }
 
 @Composable
-private fun GoalRow(goal: GoalListItem) {
+private fun MountainSunIllustration(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        // Sun — sits low and slightly left, tucked behind the back mountain layer.
+        drawCircle(
+            color = FocusSunAccent,
+            radius = w * 0.11f,
+            center = Offset(w * 0.28f, h * 0.62f)
+        )
+
+        // Back layer — furthest, lightest.
+        val far = Path().apply {
+            moveTo(0f, h * 0.55f)
+            lineTo(w * 0.30f, h * 0.20f)
+            lineTo(w * 0.62f, h * 0.50f)
+            lineTo(w * 0.85f, h * 0.28f)
+            lineTo(w, h * 0.45f)
+            lineTo(w, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(far, color = FocusMountainFar)
+
+        // Mid layer.
+        val mid = Path().apply {
+            moveTo(0f, h * 0.78f)
+            lineTo(w * 0.20f, h * 0.42f)
+            lineTo(w * 0.42f, h * 0.70f)
+            lineTo(w * 0.60f, h * 0.38f)
+            lineTo(w * 0.80f, h * 0.68f)
+            lineTo(w, h * 0.50f)
+            lineTo(w, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(mid, color = FocusMountainMid)
+
+        // Front layer — closest, darkest, its base sits flush with the bottom edge.
+        val near = Path().apply {
+            moveTo(0f, h)
+            lineTo(0f, h * 0.88f)
+            lineTo(w * 0.16f, h * 0.62f)
+            lineTo(w * 0.34f, h * 0.90f)
+            lineTo(w * 0.52f, h * 0.58f)
+            lineTo(w * 0.70f, h * 0.86f)
+            lineTo(w * 0.88f, h * 0.60f)
+            lineTo(w, h * 0.82f)
+            lineTo(w, h)
+            close()
+        }
+        drawPath(near, color = FocusMountainNear)
+    }
+}
+
+@Composable
+private fun PageIndicator(
+    pageCount: Int,
+    activeIndex: Int,
+    modifier: Modifier = Modifier
+) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .background(goal.accent.chipBackground, shape = RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = goal.icon,
-                contentDescription = null,
-                tint = goal.accent.onChip,
-                modifier = Modifier.size(20.dp)
-            )
+        repeat(pageCount) { index ->
+            val dotColor = if (index == activeIndex) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                FocusSoftAccent
+            }
+            Dot(dotColor)
         }
-
-        Spacer(modifier = Modifier.size(12.dp))
-
-        Text(
-            text = goal.name,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.weight(1f)
-        )
-
-        Text(
-            text = goal.durationLabel,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
+}
+
+@Composable
+private fun Dot(color: Color) {
+    Box(
+        modifier = Modifier
+            .size(6.dp)
+            .clip(CircleShape)
+            .background(color)
+    )
 }

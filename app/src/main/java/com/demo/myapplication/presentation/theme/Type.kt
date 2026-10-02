@@ -9,8 +9,8 @@ import androidx.compose.ui.unit.sp
 // Medium for headings and anything meant to draw the eye.
 
 val FocusTypography = Typography(
-    headlineLarge = TextStyle(         // "Your time. Your rules." / "What do you want to give time to?"
-        fontWeight = FontWeight.Medium,
+    headlineLarge = TextStyle(         // goal-name headline (GoalConfigScreen, e.g. "Mathematics")
+        fontWeight = FontWeight.SemiBold,
         fontSize = 26.sp,
         lineHeight = 32.sp
     ),
@@ -48,11 +48,38 @@ val FocusTypography = Typography(
 val TimerDisplayLarge = TextStyle(
     fontWeight = FontWeight.Medium,
     fontSize = 44.sp,
-    lineHeight = 48.sp
+    lineHeight = 48.sp,
+    fontFeatureSettings = "tnum"
 )
 
 val TimerDisplayMinimal = TextStyle(
     fontWeight = FontWeight.Normal,
     fontSize = 30.sp,
-    lineHeight = 34.sp
+    lineHeight = 34.sp,
+    fontFeatureSettings = "tnum"
+)
+
+// Screen-specific headlines that don't share a size with headlineLarge or
+// each other - named here instead of local .copy() overrides so the values
+// live in one place and match the design canvas exactly (29/24, both 1.25x
+// line-height, both SemiBold - the weight the design canvas actually uses,
+// not Bold).
+val WelcomeHeadline = TextStyle(       // "Your time.\nYour rules." (WelcomeScreen)
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 29.sp,
+    lineHeight = 36.sp
+)
+
+val AddGoalsHeadline = TextStyle(      // "What do you want\nto give time to?" (AddGoalsScreen)
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 24.sp,
+    lineHeight = 30.sp
+)
+
+// CTA button label ("Get Started" / "Continue" / "Save") - SemiBold/15sp
+// per the design canvas, distinct from titleMedium (goal row names).
+val ButtonLabel = TextStyle(
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 15.sp,
+    lineHeight = 20.sp
 )
