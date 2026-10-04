@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Update
 import com.demo.myapplication.data.local.entity.DailyGoal
 import kotlinx.coroutines.flow.Flow
+import java.sql.Date
 import java.time.LocalDate
 
 @Dao
@@ -22,6 +23,9 @@ interface DailyGoalDao {
 
     @Update
     suspend fun update(dailyGoal: DailyGoal)
+
+    @Query("SELECT * FROM daily_goals WHERE goalId=:goalId AND date=:date LIMIT 1")
+    suspend fun getForGoalAndDate(goalId: Long,date: LocalDate): DailyGoal?
 
     // Used by the "generate today's goals" logic to avoid duplicating
     // a DailyGoal for the same Goal on the same date.

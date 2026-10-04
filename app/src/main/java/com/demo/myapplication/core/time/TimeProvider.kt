@@ -1,5 +1,7 @@
 package com.demo.myapplication.core.time
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,5 +19,6 @@ interface TimeProvider {
 
 @Singleton
 class SystemTimeProvider @Inject constructor() : TimeProvider {
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun now(): Instant = Instant.now()
 }

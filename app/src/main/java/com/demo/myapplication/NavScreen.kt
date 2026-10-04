@@ -1,6 +1,8 @@
 package com.demo.myapplication
 
 import android.net.Uri
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -21,18 +23,23 @@ import com.demo.myapplication.data.local.entity.Goal
 import com.demo.myapplication.presentation.screens.AddGoalsScreen
 import com.demo.myapplication.presentation.screens.BlockableAppItem
 import com.demo.myapplication.presentation.screens.FocusScreen
+import com.demo.myapplication.presentation.screens.FocusViewModel
 import com.demo.myapplication.presentation.screens.GoalConfigScreen
 import com.demo.myapplication.presentation.screens.WelcomeScreen
 import com.demo.myapplication.presentation.screens.WelcomeViewModel
 import kotlinx.coroutines.flow.map
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun NavScreen()
 {
   val goalViewModel: WelcomeViewModel = hiltViewModel()
+  val focusViewModel: FocusViewModel = hiltViewModel()
     val navController = rememberNavController()
 
     val goals = goalViewModel.goalList.collectAsStateWithLifecycle()
+    val focusUiState = focusViewModel.uiState.collectAsStateWithLifecycle()
+
     NavHost(
        navController = navController,
         startDestination = "landing_page"
@@ -47,7 +54,7 @@ fun NavScreen()
                 goals = goals.value,
                 onBack = { navController.popBackStack() },
                 onGoalClick = { goal->
-                   navController.navigate("focus_screen/${Uri.encode(goal.id)}")
+                   navController.navigate("focus_screen/${goal.id}")
                 },
                 onAddGoal =
                 {
@@ -112,17 +119,23 @@ fun NavScreen()
             "focus_screen/{goalId}",
             arguments = listOf(
                 navArgument("goalId") {
-                    type = NavType.StringType
+                    type = NavType.LongType
                 }
             )
         ) { backStackEntry ->
 
             val goalId =
-                backStackEntry.arguments?.getString("goalId") ?: ""
+                backStackEntry.arguments?.getLong("goalId")
  val goal =  goals.value.find { it.id==goalId
  }
+            LaunchedEffect(focusUiState.value) {
+                goalId?.let { focusViewModel.start(it) }
+            }
             FocusScreen(
                 goal =goal,
+                remainingSeconds =focusUiState.value.remainingSeconds ,
+                totalSeconds = focusUiState.value.totalSeconds,
+                blockedAppsCount = focusUiState.value.totalSeconds.toInt(),
                 onPause = {},
                 onBack = { navController.popBackStack() }
             )

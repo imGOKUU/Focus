@@ -13,6 +13,7 @@ import com.demo.myapplication.core.platform.InstalledAppsProvider
 import com.demo.myapplication.data.local.entity.BlockedApp
 import com.demo.myapplication.data.local.entity.Goal
 import com.demo.myapplication.domain.usecase.AddGoalUseCase
+import com.demo.myapplication.domain.usecase.GetGoalByIdUseCase
 import com.demo.myapplication.domain.usecase.GetGoalsUseCase
 import com.demo.myapplication.presentation.theme.GoalAccent
 import com.demo.myapplication.presentation.theme.GoalAccents
@@ -39,6 +40,7 @@ import kotlin.String
 class WelcomeViewModel @Inject constructor (
 private val addGoalUseCase: AddGoalUseCase,
 private val getGoalsUseCase: GetGoalsUseCase,
+private val getGoalByIdUseCase: GetGoalByIdUseCase,
 private val installedAppsProvider: InstalledAppsProvider
 ): ViewModel() {
 
@@ -63,10 +65,17 @@ private val installedAppsProvider: InstalledAppsProvider
         }
     }
 
+    fun getGoalById(goalId:Long){
+        viewModelScope.launch {
+            getGoalByIdUseCase.invoke(goalId)
+        }
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val goalList: StateFlow<List<GoalListItem>> = getGoalsUseCase().map{ goals ->
             goals.map {goal->
                 GoalListItem(
+                    id = goal.id,
                     name = goal.name,
                     accent = goal.color.toGoalAccent(),
                     durationLabel = goal.dailyDurationSeconds.toDurationLabel(),
