@@ -6,6 +6,7 @@ import com.demo.myapplication.core.time.TimeProvider
 import com.demo.myapplication.data.local.dao.DailyGoalDao
 import com.demo.myapplication.data.local.dao.SessionDao
 import com.demo.myapplication.data.local.entity.DailyGoal
+import com.demo.myapplication.data.local.entity.GoalStatus
 import com.demo.myapplication.data.local.entity.Session
 import com.demo.myapplication.data.local.entity.SessionStatus
 import com.demo.myapplication.domain.repository.SessionRepository
@@ -18,15 +19,15 @@ import javax.inject.Inject
 class SessionRepositoryImpl @Inject constructor(
 private val dailyGoalDao: DailyGoalDao,
     private val sessionDao: SessionDao,
-    private val timerProvider: TimeProvider
+    private val timeProvider: TimeProvider
 ): SessionRepository{
   @RequiresApi(Build.VERSION_CODES.O)
-  suspend override fun startOrResumeSession(
+  suspend override fun startOrAttachSession(
         goalId: Long,
         dailyAllocatedSeconds: Long
     ): Session {
       val dailyGoal = dailyGoalDao.getForGoalAndDate(
-          goalId = goalId, date = timerProvider.now().atZone(
+          goalId = goalId, date = timeProvider.now().atZone(
               ZoneId.systemDefault()
           ).toLocalDate()
       )
@@ -36,29 +37,29 @@ private val dailyGoalDao: DailyGoalDao,
               // make a new session
               val newSession = Session(
                   dailyGoalId = dailyGoal.id,
-                  startedAt = timerProvider.now(),
+                  startedAt = timeProvider.now(),
                   allocatedSeconds = dailyAllocatedSeconds,
-                  runningSince = timerProvider.now(),
+                  runningSince = timeProvider.now(),
                   status = SessionStatus.STARTED
               )
               val id = sessionDao.upsert(newSession)
               return newSession.copy(id = id)
           } else if (isActiveSession.dailyGoalId == dailyGoal.id) {
-              //same goal countdown return as it is
+              //same goal countdown (running or paused) - attach to it as-is
               return isActiveSession
           } else {
 //a diff session is in progress so end it
               sessionDao.update(
                   isActiveSession.copy(
                       status = SessionStatus.INTERRUPTED,
-                      endedAt = timerProvider.now()
+                      endedAt = timeProvider.now()
                   )
               )
               // and create a new session
               val newSession = Session(
                   dailyGoalId = dailyGoal.id,
-                  startedAt = timerProvider.now(),
-                  runningSince = timerProvider.now(),
+                  startedAt = timeProvider.now(),
+                  runningSince = timeProvider.now(),
                   allocatedSeconds = dailyAllocatedSeconds,
                   status = SessionStatus.STARTED
               )
@@ -70,7 +71,7 @@ private val dailyGoalDao: DailyGoalDao,
          val newId = dailyGoalDao.upsert(
               DailyGoal(
                   goalId = goalId,
-                  date = timerProvider.now().atZone(
+                  date = timeProvider.now().atZone(
                       ZoneId.systemDefault()
                   ).toLocalDate(),
                   allocatedSeconds = dailyAllocatedSeconds
@@ -81,14 +82,14 @@ private val dailyGoalDao: DailyGoalDao,
              sessionDao.update(
                  isActiveSession.copy(
                      status = SessionStatus.INTERRUPTED,
-                     endedAt = timerProvider.now()
+                     endedAt = timeProvider.now()
                  )
              )
          }
           val newSession = Session(
               dailyGoalId = newId,
-              startedAt = timerProvider.now(),
-              runningSince = timerProvider.now(),
+              startedAt = timeProvider.now(),
+              runningSince = timeProvider.now(),
               allocatedSeconds = dailyAllocatedSeconds,
               status = SessionStatus.STARTED
           )
@@ -97,25 +98,40 @@ private val dailyGoalDao: DailyGoalDao,
       }
   }
 
-    override suspend fun pauseSession(session: Session) {
-        val now = timerProvider.now()
+    override suspend fun pauseSession(session: Session): Session {
+        if (session.status != SessionStatus.STARTED) return session
+        val now = timeProvider.now()
         val additionalElapsed = session.runningSince?.let { Duration.between(it, now).seconds } ?: 0L
         val updatedSession = session.copy(
             status = SessionStatus.PAUSED,
             elapsedSeconds = session.elapsedSeconds + additionalElapsed,
             runningSince = null
         )
-        sessionDao.update(
-            updatedSession
+        sessionDao.update(updatedSession)
+        return updatedSession
+    }
+
+    override suspend fun resumeSession(session: Session): Session {
+        if (session.status != SessionStatus.PAUSED) return session
+        val updatedSession = session.copy(
+            status = SessionStatus.STARTED,
+            runningSince = timeProvider.now()
         )
+        sessionDao.update(updatedSession)
+        return updatedSession
     }
 
 
    suspend override fun completeSession(session: Session) {
-       val updatedSession = session.copy(status = SessionStatus.COMPLETED)
+       val updatedSession = session.copy(status = SessionStatus.COMPLETED, runningSince = null)
         sessionDao.update(
             updatedSession
         )
+        dailyGoalDao.getById(session.dailyGoalId)?.let { dailyGoal ->
+            dailyGoalDao.update(
+                dailyGoal.copy(status = GoalStatus.COMPLETED, completedSeconds = dailyGoal.allocatedSeconds)
+            )
+        }
     }
 
 }

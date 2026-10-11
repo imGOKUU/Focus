@@ -1,6 +1,5 @@
 package com.demo.myapplication
 
-import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
@@ -20,14 +19,13 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.demo.myapplication.data.local.entity.BlockedApp
 import com.demo.myapplication.data.local.entity.Goal
-import com.demo.myapplication.presentation.screens.AddGoalsScreen
+import com.demo.myapplication.presentation.screens.HomeScreen
 import com.demo.myapplication.presentation.screens.BlockableAppItem
 import com.demo.myapplication.presentation.screens.FocusScreen
 import com.demo.myapplication.presentation.screens.FocusViewModel
 import com.demo.myapplication.presentation.screens.GoalConfigScreen
 import com.demo.myapplication.presentation.screens.WelcomeScreen
 import com.demo.myapplication.presentation.screens.WelcomeViewModel
-import kotlinx.coroutines.flow.map
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -48,11 +46,12 @@ fun NavScreen()
             )
         }
         composable("home_page"){
-            AddGoalsScreen(
+            HomeScreen(
                 goals = goals.value,
                 onBack = { navController.popBackStack() },
                 onGoalClick = { goal->
                    navController.navigate("focus_screen/${goal.id}")
+
                 },
                 onAddGoal =
                 {
@@ -78,7 +77,6 @@ fun NavScreen()
                     }
                 }
             }
-
             GoalConfigScreen(
                 goalName = goalName,
                 onGoalNameChange = { goalName = it },
@@ -99,7 +97,7 @@ fun NavScreen()
                 },
                 onSave = {
                     val goal = Goal(
-                        name = goalName,
+                        name = goalName.trim(),
                         dailyDurationSeconds = (selectedHours * 3600L) + (selectedMinutes * 60L),
                         icon = "default",
                         color = "teal"
@@ -130,15 +128,23 @@ fun NavScreen()
             LaunchedEffect(goalId) {
                 goalId?.let { focusViewModel.start(it) }
             }
+            LaunchedEffect(focusUiState.value.isCompleted) {
+                if (focusUiState.value.isCompleted) {
+                    navController.popBackStack()
+                }
+            }
             FocusScreen(
                 goal =goal,
                 remainingSeconds =focusUiState.value.remainingSeconds ,
                 totalSeconds = focusUiState.value.totalSeconds,
                 blockedAppsCount = focusUiState.value.blockedApps,
                 onPause = {
-
+                    focusViewModel.pause()
                 },
-                onBack = { navController.popBackStack() }
+                onBack = {
+                    navController.popBackStack()
+                    focusViewModel.pause()
+                }
             )
         }
 

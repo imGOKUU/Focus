@@ -33,7 +33,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -88,8 +90,13 @@ fun GoalConfigScreen(
     goalName: String,
     onGoalNameChange: (String) -> Unit = {},
     onBack: () -> Unit = {},
-    hourOptions: List<Int> = (0..4).toList(),
-    minuteOptions: List<Int> = (0..55 step 5).toList(),
+    // Forest-style single-sitting timers top out around 2h, but this screen
+    // sets a *daily* allocation that a goal can draw down across several
+    // sessions in a day (see "2h 55m"-style totals elsewhere in this app) -
+    // 12h covers a full focused workday without allowing a nonsensical
+    // near-24h entry.
+    hourOptions: List<Int> = (0..12).toList(),
+    minuteOptions: List<Int> = (0..55 step 1).toList(),
     selectedHours: Int = 1,
     selectedMinutes: Int = 0,
     onHoursChange: (Int) -> Unit = {},
@@ -98,6 +105,13 @@ fun GoalConfigScreen(
     onToggleApp: (BlockableAppItem) -> Unit = {},
     onSave: () -> Unit = {}
 ) {
+    // Save attempts validation on click rather than disabling the button
+    // outright - a silently-disabled Save with no explanation is harder to
+    // diagnose than tapping it and seeing exactly what's missing.
+    var attemptedSave by remember { mutableStateOf(false) }
+    val isNameValid = goalName.isNotBlank()
+    val isDurationValid = selectedHours > 0 || selectedMinutes > 0
+
     ResponsiveScreen {
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -132,6 +146,15 @@ fun GoalConfigScreen(
             }
         )
 
+        if (attemptedSave && !isNameValid) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Give this goal a name",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         SectionLabel("DAILY TIME")
@@ -150,6 +173,15 @@ fun GoalConfigScreen(
                 .background(FocusSoftAccent.copy(alpha = 0.4f), shape = RoundedCornerShape(16.dp))
                 .padding(horizontal = 8.dp)
         )
+
+        if (attemptedSave && !isDurationValid) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Pick a daily time above zero",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
 
         Spacer(modifier = Modifier.height(28.dp))
 
@@ -171,7 +203,13 @@ fun GoalConfigScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = onSave,
+            onClick = {
+                if (isNameValid && isDurationValid) {
+                    onSave()
+                } else {
+                    attemptedSave = true
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),

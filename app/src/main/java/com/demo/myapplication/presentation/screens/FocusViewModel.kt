@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.demo.myapplication.core.platform.InstalledAppsProvider
 import com.demo.myapplication.core.time.TimeProvider
 import com.demo.myapplication.data.local.entity.Session
+import com.demo.myapplication.data.local.entity.SessionStatus
 import com.demo.myapplication.domain.usecase.AddGoalUseCase
 import com.demo.myapplication.domain.usecase.GetGoalByIdUseCase
 import com.demo.myapplication.domain.usecase.GetGoalsUseCase
@@ -24,7 +25,9 @@ import kotlin.time.Duration.Companion.milliseconds
 data class UiState(
     val totalSeconds :Long = 1L,
     val remainingSeconds:Long = 0L,
-    val blockedApps:Int=0
+    val blockedApps:Int=0,
+    val isPaused: Boolean = false,
+    val isCompleted: Boolean = false
 )
 @HiltViewModel
 class FocusViewModel @Inject constructor (
@@ -41,18 +44,26 @@ class FocusViewModel @Inject constructor (
     fun start(goalId:Long){
         viewModelScope.launch {
             val goal = getGoalByIdUseCase(goalId)
-            val session = goal?.dailyDurationSeconds?.let { sessionUsecase(goal.id , dailyAllocatedSeconds = it ) }
-         currentSession=session
+            var session = goal?.dailyDurationSeconds?.let { sessionUsecase(goal.id , dailyAllocatedSeconds = it ) }
+            if (session?.status == SessionStatus.PAUSED) {
+                session = sessionUsecase.resumeSession(session)
+            }
+            currentSession=session
             if(session!=null){
-                val endEpochSeconds = session.startedAt.epochSecond + session.allocatedSeconds
                 _uiState.update {it.copy(totalSeconds = session.allocatedSeconds)}
                 while(isActive){
-                    val remainingSeconds =
-                        (endEpochSeconds - timeProvider.now().epochSecond).coerceAtLeast(0)
+                    val activeSession = currentSession ?: break
+                    val remainingSeconds = timeProvider.remainingSeconds(activeSession, timeProvider.now())
 
-                    _uiState.update {it.copy(remainingSeconds = remainingSeconds)}
+                    _uiState.update {
+                        it.copy(
+                            remainingSeconds = remainingSeconds,
+                            isPaused = activeSession.status == SessionStatus.PAUSED
+                        )
+                    }
                     if (remainingSeconds == 0L) {
-                        sessionUsecase.endSession(session)
+                        sessionUsecase.completeSession(activeSession)
+                        _uiState.update { it.copy(isCompleted = true) }
                         break
                     }
                     delay(1_000.milliseconds)
@@ -68,7 +79,15 @@ class FocusViewModel @Inject constructor (
     }
     fun pause(){
 viewModelScope.launch {
-    sessionUsecase.pauseSession(currentSession?:return@launch)
+    val session = currentSession ?: return@launch
+    currentSession = sessionUsecase.pauseSession(session)
+
+}
+    }
+    fun resume(){
+viewModelScope.launch {
+    val session = currentSession ?: return@launch
+    currentSession = sessionUsecase.resumeSession(session)
 
 }
     }

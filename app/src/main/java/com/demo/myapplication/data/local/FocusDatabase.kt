@@ -13,7 +13,7 @@ import com.demo.myapplication.data.local.entity.Session
 
 @Database(
     entities = [Goal::class, BlockedApp::class, DailyGoal::class, Session::class],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

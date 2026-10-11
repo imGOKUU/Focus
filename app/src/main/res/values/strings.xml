@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">My Application</string>
+    <string name="accessibility_service_description">Lets Focus detect when you open an app you\'ve chosen to block during an active session, so it can show a reminder instead.</string>
 </resources>

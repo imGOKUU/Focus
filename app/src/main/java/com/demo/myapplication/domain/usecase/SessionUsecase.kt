@@ -9,15 +9,18 @@ class SessionUsecase @Inject constructor(
     private val repository: SessionRepository
 ){
     suspend operator fun invoke(goalId:Long,dailyAllocatedSeconds:Long): Session{
-      return  repository.startOrResumeSession(
+      return  repository.startOrAttachSession(
             goalId,
             dailyAllocatedSeconds
         )
     }
-    suspend fun pauseSession(session: Session){
+    suspend fun pauseSession(session: Session): Session {
         return repository.pauseSession(session)
     }
-    suspend fun endSession(session: Session){
+    suspend fun resumeSession(session: Session): Session {
+        return repository.resumeSession(session)
+    }
+    suspend fun completeSession(session: Session){
         return repository.completeSession(session)
     }
 }

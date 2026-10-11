@@ -1,5 +1,7 @@
 package com.demo.myapplication.presentation.screens
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Code
@@ -12,6 +14,7 @@ import com.demo.myapplication.core.platform.InstalledApp
 import com.demo.myapplication.core.platform.InstalledAppsProvider
 import com.demo.myapplication.data.local.entity.BlockedApp
 import com.demo.myapplication.data.local.entity.Goal
+import com.demo.myapplication.data.local.entity.GoalStatus
 import com.demo.myapplication.domain.usecase.AddGoalUseCase
 import com.demo.myapplication.domain.usecase.GetGoalByIdUseCase
 import com.demo.myapplication.domain.usecase.GetGoalsUseCase
@@ -71,18 +74,27 @@ private val installedAppsProvider: InstalledAppsProvider
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     @OptIn(ExperimentalCoroutinesApi::class)
-    val goalList: StateFlow<List<GoalListItem>> = getGoalsUseCase().map{ goals ->
-            goals.map {goal->
-                GoalListItem(
-                    id = goal.id,
-                    name = goal.name,
-                    accent = goal.color.toGoalAccent(),
-                    durationLabel = goal.dailyDurationSeconds.toDurationLabel(),
-                    icon = goal.icon.toGoalIcon(),
-                )
-            }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000),emptyList())
+    val goalList: StateFlow<List<GoalListItem>> = combine(
+        getGoalsUseCase(),
+        getGoalsUseCase.observeTodayDailyGoals()
+    ) { goals, todayDailyGoals ->
+        val completedGoalIds = todayDailyGoals
+            .filter { it.status == GoalStatus.COMPLETED }
+            .map { it.goalId }
+            .toSet()
+        goals.map { goal ->
+            GoalListItem(
+                id = goal.id,
+                name = goal.name,
+                accent = goal.color.toGoalAccent(),
+                durationLabel = goal.dailyDurationSeconds.toDurationLabel(),
+                icon = goal.icon.toGoalIcon(),
+                isCompletedToday = goal.id in completedGoalIds,
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private fun String.toGoalAccent(): GoalAccent = when (this) {
         "teal" -> GoalAccents.Teal
