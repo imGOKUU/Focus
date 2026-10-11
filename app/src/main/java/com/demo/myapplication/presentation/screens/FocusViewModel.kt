@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.demo.myapplication.core.platform.InstalledAppsProvider
 import com.demo.myapplication.core.time.TimeProvider
+import com.demo.myapplication.data.local.entity.Session
 import com.demo.myapplication.domain.usecase.AddGoalUseCase
 import com.demo.myapplication.domain.usecase.GetGoalByIdUseCase
 import com.demo.myapplication.domain.usecase.GetGoalsUseCase
@@ -34,12 +35,14 @@ class FocusViewModel @Inject constructor (
 ): ViewModel() {
     private val  _uiState = MutableStateFlow(UiState())
     val uiState= _uiState.asStateFlow()
+    private var currentSession :Session?=null
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun start(goalId:Long){
         viewModelScope.launch {
             val goal = getGoalByIdUseCase(goalId)
             val session = goal?.dailyDurationSeconds?.let { sessionUsecase(goal.id , dailyAllocatedSeconds = it ) }
+         currentSession=session
             if(session!=null){
                 val endEpochSeconds = session.startedAt.epochSecond + session.allocatedSeconds
                 _uiState.update {it.copy(totalSeconds = session.allocatedSeconds)}
@@ -62,6 +65,12 @@ class FocusViewModel @Inject constructor (
             }
         }
 
+    }
+    fun pause(){
+viewModelScope.launch {
+    sessionUsecase.pauseSession(currentSession?:return@launch)
+
+}
     }
 
 

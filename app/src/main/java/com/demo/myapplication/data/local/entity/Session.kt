@@ -16,6 +16,8 @@ data class Session(
     val startedAt: Instant,
     val endedAt: Instant? = null,
     val allocatedSeconds: Long,
+    val elapsedSeconds: Long=0,
+    val runningSince: Instant?=null,
     val completedSeconds: Long = 0,
     val status: SessionStatus = SessionStatus.STARTED
 )

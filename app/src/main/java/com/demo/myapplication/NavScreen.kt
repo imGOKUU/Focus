@@ -34,11 +34,9 @@ import kotlinx.coroutines.flow.map
 fun NavScreen()
 {
   val goalViewModel: WelcomeViewModel = hiltViewModel()
-  val focusViewModel: FocusViewModel = hiltViewModel()
     val navController = rememberNavController()
 
     val goals = goalViewModel.goalList.collectAsStateWithLifecycle()
-    val focusUiState = focusViewModel.uiState.collectAsStateWithLifecycle()
 
     NavHost(
        navController = navController,
@@ -123,20 +121,23 @@ fun NavScreen()
                 }
             )
         ) { backStackEntry ->
-
+            val focusViewModel: FocusViewModel = hiltViewModel()
+            val focusUiState = focusViewModel.uiState.collectAsStateWithLifecycle()
             val goalId =
                 backStackEntry.arguments?.getLong("goalId")
  val goal =  goals.value.find { it.id==goalId
  }
-            LaunchedEffect(focusUiState.value) {
+            LaunchedEffect(goalId) {
                 goalId?.let { focusViewModel.start(it) }
             }
             FocusScreen(
                 goal =goal,
                 remainingSeconds =focusUiState.value.remainingSeconds ,
                 totalSeconds = focusUiState.value.totalSeconds,
-                blockedAppsCount = focusUiState.value.totalSeconds.toInt(),
-                onPause = {},
+                blockedAppsCount = focusUiState.value.blockedApps,
+                onPause = {
+
+                },
                 onBack = { navController.popBackStack() }
             )
         }

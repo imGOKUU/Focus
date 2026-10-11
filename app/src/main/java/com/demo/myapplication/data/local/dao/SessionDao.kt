@@ -15,10 +15,10 @@ interface SessionDao {
 
     // Used on app launch / after process death to detect and resume
     // (or reconcile) a session that was still running - spec section 7.
-    @Query("SELECT * FROM sessions WHERE status = 'STARTED' LIMIT 1")
+    @Query("SELECT * FROM sessions WHERE status = 'STARTED' OR 'PAUSED' LIMIT 1")
     suspend fun getActiveSession(): Session?
 
-    @Query("SELECT * FROM sessions WHERE status = 'STARTED' LIMIT 1")
+    @Query("SELECT * FROM sessions WHERE status = 'STARTED' OR 'PAUSED' LIMIT 1")
     fun observeActiveSession(): Flow<Session?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

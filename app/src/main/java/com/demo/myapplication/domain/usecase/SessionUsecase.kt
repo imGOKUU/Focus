@@ -14,6 +14,9 @@ class SessionUsecase @Inject constructor(
             dailyAllocatedSeconds
         )
     }
+    suspend fun pauseSession(session: Session){
+        return repository.pauseSession(session)
+    }
     suspend fun endSession(session: Session){
         return repository.completeSession(session)
     }

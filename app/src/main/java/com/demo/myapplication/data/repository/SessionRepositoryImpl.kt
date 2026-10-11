@@ -9,12 +9,11 @@ import com.demo.myapplication.data.local.entity.DailyGoal
 import com.demo.myapplication.data.local.entity.Session
 import com.demo.myapplication.data.local.entity.SessionStatus
 import com.demo.myapplication.domain.repository.SessionRepository
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
-import kotlin.Long
-import kotlin.concurrent.timer
 
 class SessionRepositoryImpl @Inject constructor(
 private val dailyGoalDao: DailyGoalDao,
@@ -39,6 +38,7 @@ private val dailyGoalDao: DailyGoalDao,
                   dailyGoalId = dailyGoal.id,
                   startedAt = timerProvider.now(),
                   allocatedSeconds = dailyAllocatedSeconds,
+                  runningSince = timerProvider.now(),
                   status = SessionStatus.STARTED
               )
               val id = sessionDao.upsert(newSession)
@@ -58,6 +58,7 @@ private val dailyGoalDao: DailyGoalDao,
               val newSession = Session(
                   dailyGoalId = dailyGoal.id,
                   startedAt = timerProvider.now(),
+                  runningSince = timerProvider.now(),
                   allocatedSeconds = dailyAllocatedSeconds,
                   status = SessionStatus.STARTED
               )
@@ -87,6 +88,7 @@ private val dailyGoalDao: DailyGoalDao,
           val newSession = Session(
               dailyGoalId = newId,
               startedAt = timerProvider.now(),
+              runningSince = timerProvider.now(),
               allocatedSeconds = dailyAllocatedSeconds,
               status = SessionStatus.STARTED
           )
@@ -94,6 +96,19 @@ private val dailyGoalDao: DailyGoalDao,
           return newSession.copy(id = id)
       }
   }
+
+    override suspend fun pauseSession(session: Session) {
+        val now = timerProvider.now()
+        val additionalElapsed = session.runningSince?.let { Duration.between(it, now).seconds } ?: 0L
+        val updatedSession = session.copy(
+            status = SessionStatus.PAUSED,
+            elapsedSeconds = session.elapsedSeconds + additionalElapsed,
+            runningSince = null
+        )
+        sessionDao.update(
+            updatedSession
+        )
+    }
 
 
    suspend override fun completeSession(session: Session) {

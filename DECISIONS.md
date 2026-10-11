@@ -73,6 +73,8 @@ A running record of the choices made while building this app and *why* — separ
 
 **Implementation note:** Centering is derived by finding the visible item whose midpoint is closest to the viewport's midpoint (`derivedStateOf` over `listState.layoutInfo`), not by reading `firstVisibleItemIndex`/`scrollOffset` directly — see `LEARNINGS.md` for why.
 
+**Reconfirmed (2026-09-28):** a later design canvas (approved visual reference, separate from the original spec mockup) rendered this control as a single combined 3-row list ("0h 30m / 1h 00m / 2h 00m") rather than two wheels — a second, independent nudge toward decision (a) above. Explicitly asked; kept the dual-wheel version for the same reason as originally decided (arbitrary custom durations, e.g. `01:20`, aren't representable by a preset list). This means the built UI now knowingly diverges from the latest approved visual reference on this one control — worth surfacing to whoever owns that canvas rather than treating it as silently resolved.
+
 ---
 
 ## 6. Added `material-icons-extended` for goal-category icons
@@ -114,3 +116,57 @@ A running record of the choices made while building this app and *why* — separ
 **Rationale:** User explicitly rejected the seed-list stopgap — same principle as decision 3 (don't hardcode what should come from real device/user state), extended from "goals must come from the DB" to "blockable apps must come from the device." Resolving `Intent.ACTION_MAIN`/`CATEGORY_LAUNCHER` via `PackageManager.queryIntentActivities` returns every launchable app without needing the `QUERY_ALL_PACKAGES` permission or a `<queries>` manifest entry — that specific query is exempt from Android 11+ package-visibility restrictions.
 
 **Known follow-up:** this currently returns *every* launchable app (potentially 100+, including system utilities), unfiltered. Worth revisiting with a filter (e.g. excluding `ApplicationInfo.FLAG_SYSTEM`) once tested on a real device — not done yet since it wasn't part of what was asked.
+
+---
+
+## 10. Goal-name field on GoalConfigScreen stays editable (confirmed)
+
+**Decision:** Keep the `BasicTextField` (editable) rather than reverting to the design canvas's static, non-editable title.
+
+**Rationale:** Explicitly asked and confirmed (2026-09-28) after a design-canvas review flagged the divergence. Letting a user rename a goal inline is a genuine improvement over the static mockup, not a bug to fix — same reasoning as when this was first built. No code change needed; this was already the implemented behavior.
+
+---
+
+## 11. UI pass aligned to an approved design canvas (colors, type, spacing)
+
+**Decision:** Reconciled `WelcomeScreen`/`AddGoalsScreen`/`GoalConfigScreen` against an approved external design canvas's exact CSS values (colors, font sizes/weights, spacing, chip sizes) rather than the earlier hand-eyeballed approximations from the original spec mockups.
+
+**What changed:** headline/button font weights corrected from Bold(700) to the canvas's actual SemiBold(600); three screen-specific type styles (`WelcomeHeadline`, `AddGoalsHeadline`, `ButtonLabel`) added to `Type.kt` instead of scattering `.copy()` overrides per screen; button height 56dp → 48dp; mountain/sun illustration hex values corrected to the canvas's exact values; goal-row and app-row chip sizes/spacing tightened to match; added real dividers between goal rows; switch on/off colors made explicit instead of relying on Material3 defaults; per-app fallback icon color (brand color for known apps, hash-based otherwise) instead of flat gray.
+
+**Rationale:** The prior implementation was a reasonable approximation of the prose spec's ASCII mockups, but a pixel-accurate design canvas became available with the actual intended values — worth conforming exactly rather than leaving a visible gap between "close enough" and "correct," especially since the gap was concretely measurable (e.g. font weight literally differing, not just a matter of taste).
+
+**Also renamed** `LandingPage` → `WelcomeScreen` and the old `WelcomeScreen` (goal list) → `AddGoalsScreen`, since the prior names had drifted from what each screen actually shows — `WelcomeScreen` is "Your time. Your rules.", `AddGoalsScreen` is "What do you want to give time to?".
+
+---
+
+## 12. Target platform is phone AND tablet (supersedes the "letterbox" framing in #11's `ResponsiveScreen`)
+
+**Decision:** Tablets are a real target platform, not an untargeted edge case to gracefully degrade. Explicitly stated by the user (2026-09-28) and saved to memory (`target-platforms.md`) so it carries into future work, not just this session.
+
+**Context this corrects:** Testing on a physical tablet during the design-canvas alignment pass (#11) surfaced a layout bug (phone-designed `weight()` spacing ballooning across 1333dp of tablet height). The fix at the time (`ResponsiveScreen`) capped content to a fixed ~480dp phone-shaped card, centered in blank space — a *letterboxing* pattern (same idea as how iOS handles non-optimized iPad apps). That was a reasonable stopgap when tablets weren't a stated target, but it's not real tablet support — it uses none of the extra width.
+
+**What changed:** `ResponsiveScreen` now uses a breakpoint (Material's window-size-class pattern): compact widths (phones, <600dp) get the full available width exactly as before; medium/expanded widths (tablets) get a wider ~600dp reading-width column, still centered but meaningfully wider than the old fixed 480dp, and content is top-aligned rather than vertically centered (reads as a real screen starting at the top, not a floating card). The height cap (now 1000dp) still exists to keep weighted spacers from ballooning vertically — that part of the original reasoning holds regardless of target platform.
+
+**Still not done:** this is "use the width sensibly," not a true tablet-adapted redesign (e.g. a two-pane list-detail layout for Goals list + Goal detail, larger illustrations, etc.). No tablet-specific design canvas exists yet — only phone mockups. A genuine two-pane adaptation would be a deliberate, separately-scoped feature once/if a tablet design reference exists, not something to improvise without one.
+
+---
+
+## 13. `FocusSoftAccent` vs `FocusIceAccent` — split, not merged
+
+**Decision:** `FocusSoftAccent` (`#DDE5EC`) stays scoped to dividers/track fills (its original documented purpose); `FocusIceAccent` (`#EAF3F7`, added this session) is used exclusively for the Active Session screen's melting-ice fill. Removed the stale "...ice/track fill" wording from `FocusSoftAccent`'s comment.
+
+**Rationale:** Explicitly confirmed with the user rather than silently picking one — the two colors' documented purposes had drifted into overlapping/contradictory territory (an old comment described `FocusSoftAccent` as covering "ice" before `FocusIceAccent` existed at all). Two colors, two distinct jobs, no ambiguity going forward.
+
+---
+
+## 14. Active Session screen ("FocusScreen"): UI only, no session/timer/blocking logic
+
+**Decision:** Built `FocusScreen` (in `HomeScreen.kt` — file/function name left as-is, not renamed, to avoid touching `NavScreen.kt` while the user was actively hand-editing it) as a pure function of hoisted state (`goalName`, `remainingSeconds`, `totalSeconds`, `blockedAppsCount`, `accent`, `onPause`), with all-default parameters so the existing no-arg `FocusScreen()` call in `NavScreen.kt` keeps compiling untouched.
+
+**Explicitly not built:** any ViewModel/use case/repository for sessions or timers (none existed before this — `Session`/`DailyGoal`/`SessionDao`/`TimeProvider` are schema-only so far, unlike `Goal`/`BlockedApp` which have a full chain), the real app-blocking mechanism, Minimum/Immersive mode, Session Complete/Ending Early screens, system-back-gesture interception during a session, or any paused-state visual treatment (`SessionStatus` has no `PAUSED` value yet).
+
+**Rationale:** Matches the division of labor established for every prior screen in this project (UI as pure hoisted-state functions; business logic is the user's own build). The user's request ("start the focus and lock all the apps and the timer would start, and the most important the animation") described the screen's narrative purpose and prioritized the animation specifically — not a request to build the underlying session engine or platform blocking module, both of which are substantial, separate pieces of work.
+
+**Timer formatting — two different formats, both taken literally from the spec's own examples, not unified:** the hero timer is always zero-padded `HH:MM:SS` (`00:42:17`, so digit width never shifts — paired with a `fontFeatureSettings = "tnum"` fix on `TimerDisplayLarge`/`TimerDisplayMinimal` in `Type.kt`, fulfilling a comment that had described tabular figures as intended but never actually set them); the total-time label is `H:MM:SS` with no hour padding (`1:00:00 total`), matching the spec's own inconsistent-looking but exact examples. Confirmed with the user rather than silently normalizing to one format.
+
+**Ice/can illustration:** hand-drawn `Canvas`/`Path` (no image/Lottie assets), same technique as `WelcomeScreen`'s mountain illustration. The can is tinted with the goal's own `GoalAccent.onChip` color (ties the session visual back to that goal's identity in the goal list). The ice band's jagged-edge phase is seeded once via `remember { Random.nextFloat() * 2f * PI }` — deliberately *not* re-derived per frame/recomposition, since only the band's height should animate; re-seeding the jag per frame would make it visibly crawl/boil as the timer ticks, contradicting the spec's "smooth... not cartoonish" requirement. A subtle `rememberInfiniteTransition` alpha pulse is always running but only visually applied when progress ≤ 10% remaining (gating the *value*, not the animation call, avoids any restart/flash at that threshold) — matches the spec's "slightly more noticeable in the final ~10%" note.
