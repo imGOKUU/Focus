@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
@@ -56,7 +56,8 @@ fun AccessibilityPermissionBanner(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.large)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable {
                 println("Clicked: Accessibility permission banner")
                 context.startActivity(
@@ -64,7 +65,7 @@ fun AccessibilityPermissionBanner(modifier: Modifier = Modifier) {
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 )
             }
-            .padding(14.dp),
+            .padding(horizontal = FocusLayout.CardHorizontalPadding, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {

@@ -4,15 +4,19 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -22,11 +26,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.unit.dp
 import com.demo.myapplication.presentation.components.ResponsiveScreen
+import com.demo.myapplication.presentation.components.screenVerticalInsets
 import com.demo.myapplication.presentation.theme.ButtonLabel
 import com.demo.myapplication.presentation.theme.ButtonPillShape
 import com.demo.myapplication.presentation.theme.FocusMountainFar
@@ -40,8 +46,10 @@ import com.demo.myapplication.presentation.theme.WelcomeHeadline
 fun WelcomeScreen(
     onNavigate: () -> Unit
 ) {
-    ResponsiveScreen {
-        Spacer(modifier = Modifier.height(64.dp))
+    ResponsiveScreen(
+        contentModifier = Modifier.windowInsetsPadding(screenVerticalInsets())
+    ) {
+        Spacer(modifier = Modifier.height(40.dp))
 
         Text(
             text = "Your time.\nYour rules.",
@@ -58,13 +66,29 @@ fun WelcomeScreen(
             modifier = Modifier.widthIn(max = 210.dp)
         )
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        MountainSunIllustration(
+        // The illustration sits at the bottom of the flexible space and
+        // shrinks (up to 180dp tall) to fit it, so on short screens such as
+        // phone landscape it gives way instead of pushing Get Started off-screen.
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(180.dp)
-        )
+                .weight(1f)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            BoxWithConstraints(contentAlignment = Alignment.BottomCenter) {
+                // Squashed much below its designed 180dp it just looks broken
+                // (flattened peaks, clipped sun), so leave it out instead.
+                if (maxHeight >= MinIllustrationHeight) {
+                    MountainSunIllustration(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 180.dp)
+                            .fillMaxHeight()
+                            .clipToBounds()
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(28.dp))
 
@@ -97,9 +121,11 @@ fun WelcomeScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
+
+private val MinIllustrationHeight = 120.dp
 
 @Composable
 private fun MountainSunIllustration(modifier: Modifier = Modifier) {

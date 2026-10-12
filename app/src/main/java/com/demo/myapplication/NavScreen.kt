@@ -1,5 +1,6 @@
 package com.demo.myapplication
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -133,6 +134,16 @@ fun NavScreen()
             LaunchedEffect(goalId) {
                 goalId?.let { focusViewModel.start(it) }
             }
+            // Pause first: it reads the current session synchronously, then
+            // finishes in the app scope even after this screen's ViewModel is
+            // cleared by the pop.
+            val leaveFocus: () -> Unit = {
+                focusViewModel.pause()
+                navController.popBackStack()
+            }
+            // System back (button or gesture) must behave like the on-screen
+            // back arrow - otherwise the session keeps running unnoticed.
+            BackHandler(onBack = leaveFocus)
             LaunchedEffect(focusUiState.value.isCompleted) {
                 if (focusUiState.value.isCompleted) {
                     navController.popBackStack()
@@ -150,13 +161,7 @@ fun NavScreen()
                 onResume = {
                     focusViewModel.resume()
                 },
-                onBack = {
-                    // Pause first: it reads the current session synchronously,
-                    // then finishes in the app scope even after this screen's
-                    // ViewModel is cleared by the pop.
-                    focusViewModel.pause()
-                    navController.popBackStack()
-                }
+                onBack = leaveFocus
             )
         }
 

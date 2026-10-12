@@ -9,6 +9,7 @@ val FocusSecondaryText = Color(0xFF66707A) // subtitles, muted labels, timestamp
 val FocusPrimaryDark = Color(0xFF263640)   // filled buttons, active nav icon, dark chrome
 val FocusSoftAccent = Color(0xFFDDE5EC)    // dividers, row separators, track fill
 val FocusOnPrimaryDark = Color(0xFFF7F5EF) // text/icons on FocusPrimaryDark (cream, not stark white)
+val FocusCardSurface = Color(0xFFFFFFFF)   // elevated cards sitting on the cream background
 
 // Minimum-mode (immersive) screen — near-black, intentionally low contrast.
 // These are fixed regardless of light/dark app setting; see Theme.kt note.

@@ -4,18 +4,25 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,16 +45,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.demo.myapplication.presentation.components.CardRowDivider
+import com.demo.myapplication.presentation.components.FocusLayout
 import com.demo.myapplication.presentation.components.ResponsiveScreen
+import com.demo.myapplication.presentation.components.SectionCard
+import com.demo.myapplication.presentation.components.SectionLabel
+import com.demo.myapplication.presentation.components.screenVerticalInsets
 import com.demo.myapplication.presentation.theme.ButtonLabel
 import com.demo.myapplication.presentation.theme.ButtonPillShape
-import com.demo.myapplication.presentation.theme.FocusSoftAccent
 import kotlin.math.abs
 
 /**
@@ -81,6 +96,12 @@ private fun BlockableAppItem.fallbackAccentColor(): Color =
     knownAppAccents[packageName]
         ?: fallbackAccentPalette[abs(packageName.hashCode()) % fallbackAccentPalette.size]
 
+private val CardVerticalPadding = 12.dp
+private val CompactCardVerticalPadding = 4.dp
+private val SectionLabelHeight = 16.dp
+private val ErrorLineHeight = 22.dp
+
+
 @Composable
 fun GoalConfigScreen(
     goalName: String,
@@ -100,8 +121,12 @@ fun GoalConfigScreen(
     val isNameValid = goalName.isNotBlank()
     val isDurationValid = selectedHours > 0 || selectedMinutes > 0
 
-    ResponsiveScreen {
-        Spacer(modifier = Modifier.height(24.dp))
+    ResponsiveScreen(
+        // The app draws edge-to-edge (targetSdk 35+), so keep the back icon
+        // and Save button clear of the status and navigation bars.
+        contentModifier = Modifier.windowInsetsPadding(screenVerticalInsets())
+    ) {
+        Spacer(modifier = Modifier.height(8.dp))
 
         Icon(
             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
@@ -145,46 +170,56 @@ fun GoalConfigScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        SectionLabel("DAILY TIME")
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        DailyTimeWheelPicker(
-            hourOptions = hourOptions,
-            minuteOptions = minuteOptions,
-            selectedHours = selectedHours,
-            selectedMinutes = selectedMinutes,
-            onHoursChange = onHoursChange,
-            onMinutesChange = onMinutesChange,
+        // The picker + app list region takes all height between the name
+        // field and Save. Only the app list inside it scrolls; the name
+        // field, picker, and Save button stay put.
+        BoxWithConstraints(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
-                .background(FocusSoftAccent.copy(alpha = 0.4f), shape = RoundedCornerShape(16.dp))
-                .padding(horizontal = 8.dp)
-        )
+        ) {
+            val sideBySide = maxHeight < FocusLayout.SideBySideHeightThreshold
+            val showDurationError = attemptedSave && !isDurationValid
 
-        if (attemptedSave && !isDurationValid) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Pick a daily time above zero",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error
-            )
-        }
+            val dailyTime: @Composable ColumnScope.(Int, Dp, Dp) -> Unit = { visibleRows, itemHeight, verticalPadding ->
+                DailyTimeSection(
+                    hourOptions = hourOptions,
+                    minuteOptions = minuteOptions,
+                    selectedHours = selectedHours,
+                    selectedMinutes = selectedMinutes,
+                    onHoursChange = onHoursChange,
+                    onMinutesChange = onMinutesChange,
+                    visibleRows = visibleRows,
+                    itemHeight = itemHeight,
+                    verticalPadding = verticalPadding,
+                    showError = showDurationError
+                )
+            }
 
-        Spacer(modifier = Modifier.height(28.dp))
-
-        SectionLabel("APPS TO BLOCK")
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // This list is every real launchable app on the device (potentially
-        // 100+, see DECISIONS.md) - it needs its own bounded, independently
-        // scrolling region so a long list can't push the Save button off
-        // screen or require scrolling past it to reach Save. Only this
-        // section scrolls; the name field, picker, and Save button stay put.
-        LazyColumn(modifier = Modifier.weight(1f)) {
-            items(blockableApps, key = { it.packageName }) { app ->
-                AppToggleRow(app = app, onToggle = { onToggleApp(app) })
+            if (sideBySide) {
+                // Fit a 3-row wheel into whatever height is left so the card
+                // never gets squeezed below its content (label + gap + card
+                // padding + optional error line are subtracted first).
+                val reserved = SectionLabelHeight + FocusLayout.SectionLabelGap + CompactCardVerticalPadding * 2 +
+                    (if (showDurationError) ErrorLineHeight else 0.dp)
+                val compactItemHeight = ((maxHeight - reserved) / 3).coerceIn(MinWheelItemHeight, WheelItemHeight)
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        dailyTime(3, compactItemHeight, CompactCardVerticalPadding)
+                    }
+                    Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        AppsToBlockSection(blockableApps, onToggleApp)
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    dailyTime(5, WheelItemHeight, CardVerticalPadding)
+                    Spacer(modifier = Modifier.height(FocusLayout.SectionGap))
+                    AppsToBlockSection(blockableApps, onToggleApp)
+                }
             }
         }
 
@@ -214,26 +249,103 @@ fun GoalConfigScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
 @Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
+private fun ColumnScope.DailyTimeSection(
+    hourOptions: List<Int>,
+    minuteOptions: List<Int>,
+    selectedHours: Int,
+    selectedMinutes: Int,
+    onHoursChange: (Int) -> Unit,
+    onMinutesChange: (Int) -> Unit,
+    visibleRows: Int,
+    itemHeight: Dp,
+    verticalPadding: Dp,
+    showError: Boolean
+) {
+    SectionLabel("DAILY TIME")
+    Spacer(modifier = Modifier.height(FocusLayout.SectionLabelGap))
+    SectionCard(modifier = Modifier.fillMaxWidth()) {
+        DailyTimeWheelPicker(
+            hourOptions = hourOptions,
+            minuteOptions = minuteOptions,
+            selectedHours = selectedHours,
+            selectedMinutes = selectedMinutes,
+            onHoursChange = onHoursChange,
+            onMinutesChange = onMinutesChange,
+            visibleRows = visibleRows,
+            itemHeight = itemHeight,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = FocusLayout.CardHorizontalPadding, vertical = verticalPadding)
+        )
+    }
+    if (showError) {
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Pick a daily time above zero",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.error
+        )
+    }
+}
+
+@Composable
+private fun ColumnScope.AppsToBlockSection(
+    blockableApps: List<BlockableAppItem>,
+    onToggleApp: (BlockableAppItem) -> Unit
+) {
+    SectionLabel("APPS TO BLOCK")
+    Spacer(modifier = Modifier.height(FocusLayout.SectionLabelGap))
+    // The weight lives on this Box, not the card: the Box claims all the
+    // remaining height (keeping Save anchored), while the card inside only
+    // wraps its content - a short list gets a short card, a long list is
+    // capped at the available height and scrolls inside the card's clip.
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+    ) {
+        SectionCard(modifier = Modifier.fillMaxWidth()) {
+            if (blockableApps.isEmpty()) {
+                Text(
+                    text = "No apps to show",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(
+                        horizontal = FocusLayout.CardHorizontalPadding,
+                        vertical = 20.dp
+                    )
+                )
+            } else {
+                // Every real launchable app on the device (potentially 100+,
+                // see DECISIONS.md) - bounded and independently scrolling.
+                LazyColumn(contentPadding = PaddingValues(vertical = 4.dp)) {
+                    itemsIndexed(blockableApps, key = { _, app -> app.packageName }) { index, app ->
+                        AppToggleRow(app = app, onToggle = { onToggleApp(app) })
+                        if (index < blockableApps.lastIndex) {
+                            CardRowDivider()
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Daily-time picker: two independent scroll-snap wheels (hours x minutes).
-// Structural decision pending re: matching the design canvas's single
-// combined-list look (see DECISIONS.md) - left untouched in this pass.
+// Daily-time picker: two independent scroll-snap wheels (hours x minutes)
+// under one shared selection band, with fixed unit labels beside the
+// centered values - one duration selector rather than two lists.
 // ═══════════════════════════════════════════════════════════════════════
 
-private val WheelItemHeight = 48.dp
+private val WheelItemHeight = 44.dp
+private val MinWheelItemHeight = 32.dp
+private val WheelNumberSlotWidth = 44.dp
+private val WheelUnitSlotWidth = 52.dp
 
 @Composable
 private fun DailyTimeWheelPicker(
@@ -243,16 +355,22 @@ private fun DailyTimeWheelPicker(
     selectedMinutes: Int,
     onHoursChange: (Int) -> Unit,
     onMinutesChange: (Int) -> Unit,
+    visibleRows: Int,
+    itemHeight: Dp,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier.height(WheelItemHeight * 3), contentAlignment = Alignment.Center) {
+    // Sized by the wheels; the band is centered on their middle row.
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
         // Drawn once behind both wheels so it reads as a single selection
         // band across the row, rather than two separate highlights.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(WheelItemHeight)
-                .background(MaterialTheme.colorScheme.background, shape = RoundedCornerShape(12.dp))
+                .height(itemHeight)
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                    shape = MaterialTheme.shapes.medium
+                )
         )
 
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -260,14 +378,20 @@ private fun DailyTimeWheelPicker(
                 values = hourOptions,
                 selectedValue = selectedHours,
                 onSelectedValueChange = onHoursChange,
-                label = { "$it h" },
+                label = { "$it" },
+                unit = "hours",
+                visibleRows = visibleRows,
+                itemHeight = itemHeight,
                 modifier = Modifier.weight(1f)
             )
             Wheel(
                 values = minuteOptions,
                 selectedValue = selectedMinutes,
                 onSelectedValueChange = onMinutesChange,
-                label = { "%02d m".format(it) },
+                label = { "%02d".format(it) },
+                unit = "min",
+                visibleRows = visibleRows,
+                itemHeight = itemHeight,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -286,11 +410,17 @@ private fun Wheel(
     selectedValue: Int,
     onSelectedValueChange: (Int) -> Unit,
     label: (Int) -> String,
+    unit: String,
+    visibleRows: Int,
+    itemHeight: Dp,
     modifier: Modifier = Modifier
 ) {
     val initialIndex = values.indexOf(selectedValue).coerceAtLeast(0)
+    // contentPadding already offsets the list by visibleRows / 2 rows, so the
+    // first visible item IS the centered one - no -1 adjustment (that centered
+    // the value below the selection, and rotation then knocked hours down by one).
     val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = (initialIndex - 1).coerceAtLeast(0)
+        initialFirstVisibleItemIndex = initialIndex
     )
 
     val centeredIndex by remember {
@@ -309,51 +439,96 @@ private fun Wheel(
         onSelectedValueChange(values[centeredIndex.coerceIn(values.indices)])
     }
 
-    LazyColumn(
-        state = listState,
-        flingBehavior = rememberSnapFlingBehavior(listState),
-        contentPadding = PaddingValues(vertical = WheelItemHeight),
-        modifier = modifier.height(WheelItemHeight * 3)
-    ) {
-        itemsIndexed(values) { index, value ->
-            val isSelected = index == centeredIndex
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(WheelItemHeight),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = label(value),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        fontSize = 16.sp
-                    ),
-                    color = if (isSelected) {
-                        MaterialTheme.colorScheme.onBackground
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+    val selectedStyle = MaterialTheme.typography.titleLarge.copy(
+        fontSize = 22.sp,
+        fontWeight = FontWeight.SemiBold,
+        fontFeatureSettings = "tnum"
+    )
+    val unselectedStyle = selectedStyle.copy(fontWeight = FontWeight.Normal)
+    val selectedColor = MaterialTheme.colorScheme.onSurface
+    val mutedColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    Box(modifier = modifier.height(itemHeight * visibleRows), contentAlignment = Alignment.Center) {
+        LazyColumn(
+            state = listState,
+            flingBehavior = rememberSnapFlingBehavior(listState),
+            contentPadding = PaddingValues(vertical = itemHeight * (visibleRows / 2)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            itemsIndexed(values) { index, value ->
+                val distance = abs(index - centeredIndex)
+                val isSelected = distance == 0
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(itemHeight)
+                        .graphicsLayer {
+                            // Rows recede as they move away from the band.
+                            val scale = if (isSelected) 1f else 0.9f
+                            scaleX = scale
+                            scaleY = scale
+                            alpha = when (distance) {
+                                0 -> 1f
+                                1 -> 0.8f
+                                else -> 0.4f
+                            }
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier.width(WheelNumberSlotWidth),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Text(
+                            text = label(value),
+                            style = if (isSelected) selectedStyle else unselectedStyle,
+                            color = if (isSelected) selectedColor else mutedColor,
+                            maxLines = 1
+                        )
                     }
-                )
+                    Spacer(modifier = Modifier.width(WheelUnitSlotWidth))
+                }
             }
+        }
+
+        // Fixed unit label beside the centered value; it doesn't consume
+        // touches, so drags over it still scroll the wheel underneath.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(modifier = Modifier.width(WheelNumberSlotWidth))
+            Text(
+                text = unit,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                color = selectedColor,
+                maxLines = 1,
+                modifier = Modifier
+                    .width(WheelUnitSlotWidth)
+                    .padding(start = 8.dp)
+            )
         }
     }
 }
+
 
 @Composable
 private fun AppToggleRow(app: BlockableAppItem, onToggle: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .heightIn(min = FocusLayout.RowMinHeight)
+            .padding(horizontal = FocusLayout.CardHorizontalPadding, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(FocusLayout.RowIconSize)
                 .background(
                     if (app.icon != null) MaterialTheme.colorScheme.surfaceVariant else app.fallbackAccentColor(),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(11.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -362,24 +537,28 @@ private fun AppToggleRow(app: BlockableAppItem, onToggle: () -> Unit) {
                 Image(
                     bitmap = icon,
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(26.dp)
                 )
             } else {
                 Text(
                     text = app.appName.take(1).uppercase(),
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = Color.White
                 )
             }
         }
 
-        Spacer(modifier = Modifier.size(11.dp))
+        Spacer(modifier = Modifier.width(FocusLayout.RowIconLabelGap))
 
         Text(
             text = app.appName,
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.weight(1f)
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp)
         )
 
         Switch(

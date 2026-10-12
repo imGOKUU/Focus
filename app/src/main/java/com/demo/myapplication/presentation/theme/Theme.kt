@@ -19,7 +19,10 @@ private val FocusLightColorScheme = lightColorScheme(
     outline = FocusSoftAccent,
     outlineVariant = FocusSoftAccent,
     surfaceVariant = FocusSoftAccent,
-    onSurfaceVariant = FocusSecondaryText
+    onSurfaceVariant = FocusSecondaryText,
+    // Elevated card surface (GoalConfigScreen's section cards) - one step
+    // lighter than the cream background so the card reads as raised.
+    surfaceContainerLowest = FocusCardSurface
 )
 
 // Dark scheme is a placeholder, not something from the mockup — the
@@ -38,7 +41,8 @@ private val FocusDarkColorScheme = darkColorScheme(
     outline = Color(0xFF2A323A),
     outlineVariant = Color(0xFF2A323A),
     surfaceVariant = Color(0xFF232B33),
-    onSurfaceVariant = Color(0xFF8B939B)
+    onSurfaceVariant = Color(0xFF8B939B),
+    surfaceContainerLowest = Color(0xFF1C2228)
 )
 
 @Composable
