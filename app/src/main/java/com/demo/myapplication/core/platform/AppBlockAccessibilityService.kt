@@ -8,7 +8,9 @@ import com.demo.myapplication.core.time.TimeProvider
 import com.demo.myapplication.data.local.dao.DailyGoalDao
 import com.demo.myapplication.data.local.dao.GoalDao
 import com.demo.myapplication.data.local.dao.SessionDao
+import com.demo.myapplication.data.local.entity.Session
 import com.demo.myapplication.data.local.entity.SessionStatus
+import com.demo.myapplication.domain.repository.SessionRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,12 +40,15 @@ class AppBlockAccessibilityService : AccessibilityService() {
     @Inject lateinit var dailyGoalDao: DailyGoalDao
     @Inject lateinit var goalDao: GoalDao
     @Inject lateinit var timeProvider: TimeProvider
+    @Inject lateinit var sessionRepository: SessionRepository
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    // Holds the session itself, not a precomputed remaining time - remaining
+    // must be derived at the moment an app opens, or it goes stale.
     private data class ActiveBlock(
         val goalName: String,
-        val remainingSeconds: Long,
+        val session: Session,
         val blockedPackages: Set<String>
     )
 
@@ -74,10 +79,7 @@ class AppBlockAccessibilityService : AccessibilityService() {
                                     goalDao.observeBlockedApps(dailyGoal.goalId).map { blocked ->
                                         ActiveBlock(
                                             goalName = goal?.name.orEmpty(),
-                                            remainingSeconds = timeProvider.remainingSeconds(
-                                                session,
-                                                timeProvider.now()
-                                            ),
+                                            session = session,
                                             blockedPackages = blocked.map { it.packageName }.toSet()
                                         )
                                     }
@@ -114,13 +116,24 @@ class AppBlockAccessibilityService : AccessibilityService() {
             return
         }
 
+        val now = timeProvider.now()
+        val remainingSeconds = timeProvider.remainingSeconds(snapshot.session, now)
+        if (remainingSeconds == 0L) {
+            // Time's up but the session isn't marked COMPLETED yet (e.g. the
+            // watcher's wait overran during deep sleep) - stop blocking now
+            // and record the completion.
+            lastBlockedPackage = null
+            serviceScope.launch { sessionRepository.completeIfExpired() }
+            return
+        }
+
         if (packageName == lastBlockedPackage) return
         lastBlockedPackage = packageName
 
-        launchBlockScreen(packageName, snapshot)
+        launchBlockScreen(packageName, snapshot, sessionEndsAtMillis = now.toEpochMilli() + remainingSeconds * 1000)
     }
 
-    private fun launchBlockScreen(packageName: String, snapshot: ActiveBlock) {
+    private fun launchBlockScreen(packageName: String, snapshot: ActiveBlock, sessionEndsAtMillis: Long) {
         val appName = runCatching {
             packageManager.getApplicationLabel(
                 packageManager.getApplicationInfo(packageName, 0)
@@ -132,7 +145,7 @@ class AppBlockAccessibilityService : AccessibilityService() {
             putExtra(BlockedAppActivity.EXTRA_PACKAGE_NAME, packageName)
             putExtra(BlockedAppActivity.EXTRA_APP_NAME, appName)
             putExtra(BlockedAppActivity.EXTRA_GOAL_NAME, snapshot.goalName)
-            putExtra(BlockedAppActivity.EXTRA_REMAINING_SECONDS, snapshot.remainingSeconds)
+            putExtra(BlockedAppActivity.EXTRA_SESSION_ENDS_AT_MILLIS, sessionEndsAtMillis)
         }
         startActivity(intent)
     }

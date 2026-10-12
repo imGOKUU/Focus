@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.Flow
 
 interface GoalRepository {
     suspend fun addGoal(goal: Goal): Long
+    // Inserts the goal and its blocked apps in one transaction - all or nothing.
+    suspend fun addGoalWithBlockedApps(goal: Goal, blockedApps: List<BlockedApp>): Long
     suspend fun upsertBlockedApp(blockedApp: BlockedApp)
      fun getActiveGoals(): Flow<List<Goal>>
      fun observeBlockedApps(goalId:Long): Flow<List<BlockedApp>>

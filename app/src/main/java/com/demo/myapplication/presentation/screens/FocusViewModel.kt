@@ -1,7 +1,5 @@
 package com.demo.myapplication.presentation.screens
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.demo.myapplication.core.platform.InstalledAppsProvider
@@ -12,7 +10,10 @@ import com.demo.myapplication.domain.usecase.AddGoalUseCase
 import com.demo.myapplication.domain.usecase.GetGoalByIdUseCase
 import com.demo.myapplication.domain.usecase.GetGoalsUseCase
 import com.demo.myapplication.domain.usecase.SessionUsecase
+import com.demo.myapplication.di.ApplicationScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,14 +35,20 @@ class FocusViewModel @Inject constructor (
     private val getGoalsUseCase: GetGoalsUseCase,
     private val getGoalByIdUseCase: GetGoalByIdUseCase,
     private val sessionUsecase: SessionUsecase,
-    private val timeProvider: TimeProvider
+    private val timeProvider: TimeProvider,
+    @ApplicationScope private val applicationScope: CoroutineScope
 ): ViewModel() {
     private val  _uiState = MutableStateFlow(UiState())
     val uiState= _uiState.asStateFlow()
     private var currentSession :Session?=null
+    private var startedGoalId: Long? = null
 
-    @RequiresApi(Build.VERSION_CODES.O)
     fun start(goalId:Long){
+        // The screen's LaunchedEffect re-runs on rotation but this ViewModel
+        // survives it - without this guard a second countdown loop and a
+        // second blocked-apps collector would start.
+        if (startedGoalId == goalId) return
+        startedGoalId = goalId
         viewModelScope.launch {
             val goal = getGoalByIdUseCase(goalId)
             var session = goal?.dailyDurationSeconds?.let { sessionUsecase(goal.id , dailyAllocatedSeconds = it ) }
@@ -77,19 +84,22 @@ class FocusViewModel @Inject constructor (
         }
 
     }
-    fun pause(){
-viewModelScope.launch {
-    val session = currentSession ?: return@launch
-    currentSession = sessionUsecase.pauseSession(session)
+    // Pause/resume run in the application scope: the Focus screen's back
+    // button pauses and leaves at the same time, which clears this ViewModel
+    // and would cancel a viewModelScope write mid-flight. Main.immediate runs
+    // each call up to its first suspension right away, so back-to-back
+    // pause/resume taps reach the repository in the order they were made.
+    fun pause() = updateSession { sessionUsecase.pauseSession(it) }
 
-}
-    }
-    fun resume(){
-viewModelScope.launch {
-    val session = currentSession ?: return@launch
-    currentSession = sessionUsecase.resumeSession(session)
+    fun resume() = updateSession { sessionUsecase.resumeSession(it) }
 
-}
+    private fun updateSession(change: suspend (Session) -> Session) {
+        applicationScope.launch(Dispatchers.Main.immediate) {
+            val session = currentSession ?: return@launch
+            val updated = change(session)
+            currentSession = updated
+            _uiState.update { it.copy(isPaused = updated.status == SessionStatus.PAUSED) }
+        }
     }
 
 

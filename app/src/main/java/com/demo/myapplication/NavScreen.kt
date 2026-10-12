@@ -1,12 +1,11 @@
 package com.demo.myapplication
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -27,7 +26,6 @@ import com.demo.myapplication.presentation.screens.GoalConfigScreen
 import com.demo.myapplication.presentation.screens.WelcomeScreen
 import com.demo.myapplication.presentation.screens.WelcomeViewModel
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun NavScreen()
 {
@@ -60,40 +58,47 @@ fun NavScreen()
             )
         }
         composable("add_goal"){
-            var goalName by remember { mutableStateOf("") }
-            var selectedHours by remember { mutableStateOf(1) }
-            var selectedMinutes by remember { mutableStateOf(0) }
+            // rememberSaveable so the form survives rotation / tablet resizing.
+            var goalName by rememberSaveable { mutableStateOf("") }
+            var selectedHours by rememberSaveable { mutableStateOf(1) }
+            var selectedMinutes by rememberSaveable { mutableStateOf(0) }
             val installedApps by goalViewModel.installedApps.collectAsStateWithLifecycle()
-            var blockableApps by remember { mutableStateOf<List<BlockableAppItem>>(emptyList()) }
-            LaunchedEffect(installedApps) {
-                if (installedApps.isNotEmpty()) {
-                    blockableApps = installedApps.map { app ->
-                        BlockableAppItem(
-                            appName = app.appName,
-                            packageName = app.packageName,
-                            icon = runCatching { app.icon.toBitmap().asImageBitmap() }.getOrNull(),
-                            isBlocked = false
-                        )
-                    }
+            // Only the chosen package names are saved; icons (bitmaps) can't go
+            // in saved state, so they're rebuilt from installedApps instead.
+            var blockedPackages by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
+            val appIcons = remember(installedApps) {
+                installedApps.associate { app ->
+                    app.packageName to runCatching { app.icon.toBitmap().asImageBitmap() }.getOrNull()
                 }
+            }
+            val blockableApps = installedApps.map { app ->
+                BlockableAppItem(
+                    appName = app.appName,
+                    packageName = app.packageName,
+                    icon = appIcons[app.packageName],
+                    isBlocked = app.packageName in blockedPackages
+                )
             }
             GoalConfigScreen(
                 goalName = goalName,
                 onGoalNameChange = { goalName = it },
-                onBack = { navController.popBackStack() },
+                onBack = {
+                    println("Back clicked")
+                    navController.popBackStack()
+                         },
                 selectedHours = selectedHours,
                 onHoursChange = { selectedHours = it },
                 selectedMinutes = selectedMinutes,
                 onMinutesChange = { selectedMinutes = it },
                 blockableApps = blockableApps,
                 onToggleApp = { toggled ->
-                    blockableApps = blockableApps.map { app ->
-                        if (app.packageName == toggled.packageName) {
-                            app.copy(isBlocked = !app.isBlocked)
+                    blockedPackages = ArrayList(
+                        if (toggled.packageName in blockedPackages) {
+                            blockedPackages - toggled.packageName
                         } else {
-                            app
+                            blockedPackages + toggled.packageName
                         }
-                    }
+                    )
                 },
                 onSave = {
                     val goal = Goal(
@@ -138,12 +143,19 @@ fun NavScreen()
                 remainingSeconds =focusUiState.value.remainingSeconds ,
                 totalSeconds = focusUiState.value.totalSeconds,
                 blockedAppsCount = focusUiState.value.blockedApps,
+                isPaused = focusUiState.value.isPaused,
                 onPause = {
                     focusViewModel.pause()
                 },
+                onResume = {
+                    focusViewModel.resume()
+                },
                 onBack = {
-                    navController.popBackStack()
+                    // Pause first: it reads the current session synchronously,
+                    // then finishes in the app scope even after this screen's
+                    // ViewModel is cleared by the pop.
                     focusViewModel.pause()
+                    navController.popBackStack()
                 }
             )
         }

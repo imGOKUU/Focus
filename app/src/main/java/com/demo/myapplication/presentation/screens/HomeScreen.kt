@@ -59,7 +59,10 @@ fun HomeScreen(
             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.clickable(onClick = onBack)
+            modifier = Modifier.clickable {
+                println("Clicked: Home Back icon")
+                onBack()
+            }
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -92,7 +95,10 @@ fun HomeScreen(
         // overflowing the screen.
         LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
             items(goals) { goal ->
-                GoalRow(goal = goal, onClick = { onGoalClick(goal) })
+                GoalRow(goal = goal, onClick = {
+                    println("Clicked: Home goal row - ${goal.name}")
+                    onGoalClick(goal)
+                })
                 HorizontalDivider(color = Color(0xFFEDEAE1), thickness = 1.dp)
             }
         }
@@ -100,7 +106,10 @@ fun HomeScreen(
         Row(
             modifier = Modifier
                 .padding(vertical = 13.dp)
-                .clickable(onClick = onAddGoal),
+                .clickable {
+                    println("Clicked: Home Add Goal")
+                    onAddGoal()
+                },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -119,7 +128,10 @@ fun HomeScreen(
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
-            onClick = onContinue,
+            onClick = {
+                println("Clicked: Home Continue button")
+                onContinue()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),

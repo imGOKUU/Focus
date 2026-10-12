@@ -78,7 +78,10 @@ fun WelcomeScreen(
         Spacer(modifier = Modifier.height(28.dp))
 
         Button(
-            onClick = onNavigate,
+            onClick = {
+                println("Clicked: Welcome Get Started button")
+                onNavigate()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),

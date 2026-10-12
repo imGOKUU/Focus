@@ -58,6 +58,7 @@ fun AccessibilityPermissionBanner(modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(14.dp))
             .clickable {
+                println("Clicked: Accessibility permission banner")
                 context.startActivity(
                     Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

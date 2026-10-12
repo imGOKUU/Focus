@@ -63,10 +63,6 @@ data class BlockableAppItem(
     val icon: ImageBitmap?,
     val isBlocked: Boolean
 )
-
-// Brand colors for the well-known apps shown in the design canvas; anything
-// else falls back to a deterministic (hash-based) pick from the same palette
-// so an unrecognized app still reads as "intentional", not generic gray.
 private val knownAppAccents = mapOf(
     "com.instagram.android" to Color(0xFFC1447E),
     "com.google.android.youtube" to Color(0xFFE1483B),
@@ -90,11 +86,6 @@ fun GoalConfigScreen(
     goalName: String,
     onGoalNameChange: (String) -> Unit = {},
     onBack: () -> Unit = {},
-    // Forest-style single-sitting timers top out around 2h, but this screen
-    // sets a *daily* allocation that a goal can draw down across several
-    // sessions in a day (see "2h 55m"-style totals elsewhere in this app) -
-    // 12h covers a full focused workday without allowing a nonsensical
-    // near-24h entry.
     hourOptions: List<Int> = (0..12).toList(),
     minuteOptions: List<Int> = (0..55 step 1).toList(),
     selectedHours: Int = 1,
@@ -105,9 +96,6 @@ fun GoalConfigScreen(
     onToggleApp: (BlockableAppItem) -> Unit = {},
     onSave: () -> Unit = {}
 ) {
-    // Save attempts validation on click rather than disabling the button
-    // outright - a silently-disabled Save with no explanation is harder to
-    // diagnose than tapping it and seeing exactly what's missing.
     var attemptedSave by remember { mutableStateOf(false) }
     val isNameValid = goalName.isNotBlank()
     val isDurationValid = selectedHours > 0 || selectedMinutes > 0
@@ -119,13 +107,13 @@ fun GoalConfigScreen(
             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.clickable(onClick = onBack)
+            modifier = Modifier.clickable {
+                println("Clicked: GoalConfig Back icon")
+                onBack()
+            }
         )
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        // Editable rather than the mockup's static title - lets a user
-        // rename a goal inline. (Decision confirmed - see DECISIONS.md.)
         BasicTextField(
             value = goalName,
             onValueChange = onGoalNameChange,
@@ -204,6 +192,7 @@ fun GoalConfigScreen(
 
         Button(
             onClick = {
+                println("Clicked: GoalConfig Save button")
                 if (isNameValid && isDurationValid) {
                     onSave()
                 } else {
@@ -395,7 +384,10 @@ private fun AppToggleRow(app: BlockableAppItem, onToggle: () -> Unit) {
 
         Switch(
             checked = app.isBlocked,
-            onCheckedChange = { onToggle() },
+            onCheckedChange = {
+                println("Clicked: GoalConfig app toggle - ${app.appName}")
+                onToggle()
+            },
             colors = SwitchDefaults.colors(
                 checkedTrackColor = MaterialTheme.colorScheme.primary,
                 checkedThumbColor = MaterialTheme.colorScheme.onPrimary,

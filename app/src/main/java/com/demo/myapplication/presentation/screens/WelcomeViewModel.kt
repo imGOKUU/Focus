@@ -1,7 +1,5 @@
 package com.demo.myapplication.presentation.screens
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Code
@@ -61,10 +59,7 @@ private val installedAppsProvider: InstalledAppsProvider
 
     fun createGoal(goal: Goal, blockedApp: List<BlockedApp>) {
         viewModelScope.launch {
-            val goalId = addGoalUseCase.invoke(goal)
-            blockedApp.forEach {
-                addGoalUseCase.upsertBlockedApp(it.copy(goalId = goalId))
-            }
+            addGoalUseCase(goal, blockedApp)
         }
     }
 
@@ -74,7 +69,6 @@ private val installedAppsProvider: InstalledAppsProvider
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     @OptIn(ExperimentalCoroutinesApi::class)
     val goalList: StateFlow<List<GoalListItem>> = combine(
         getGoalsUseCase(),

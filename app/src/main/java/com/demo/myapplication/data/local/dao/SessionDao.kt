@@ -21,6 +21,9 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE status IN ('STARTED', 'PAUSED') LIMIT 1")
     fun observeActiveSession(): Flow<Session?>
 
+    @Query("SELECT * FROM sessions WHERE id = :id")
+    suspend fun getById(id: Long): Session?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(session: Session): Long
 

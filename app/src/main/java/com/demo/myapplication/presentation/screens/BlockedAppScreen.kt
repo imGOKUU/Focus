@@ -98,7 +98,10 @@ fun BlockedAppScreen(
         Spacer(modifier = Modifier.height(40.dp))
 
         Button(
-            onClick = onGoBack,
+            onClick = {
+                println("Clicked: BlockedApp Go Back button")
+                onGoBack()
+            },
             shape = ButtonPillShape,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,

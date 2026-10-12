@@ -1,7 +1,5 @@
 package com.demo.myapplication.domain.usecase
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import com.demo.myapplication.data.local.entity.BlockedApp
 import com.demo.myapplication.data.local.entity.DailyGoal
 import com.demo.myapplication.data.local.entity.Goal
@@ -19,7 +17,6 @@ class GetGoalsUseCase @Inject constructor(
        return repository.observeBlockedApps(goalId)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     fun observeTodayDailyGoals(): Flow<List<DailyGoal>> {
         return repository.observeTodayDailyGoals()
     }

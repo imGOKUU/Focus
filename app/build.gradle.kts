@@ -31,6 +31,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        // java.time (Instant, LocalDate, Duration) is API 26+, but minSdk is 24 -
+        // desugaring backports it so the app doesn't crash on Android 7.x.
+        isCoreLibraryDesugaringEnabled = true
     }
     buildFeatures {
         compose = true
@@ -66,6 +69,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
 
     implementation(libs.lottie.compose)
+
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

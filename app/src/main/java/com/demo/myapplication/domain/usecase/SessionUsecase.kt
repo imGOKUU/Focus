@@ -23,4 +23,7 @@ class SessionUsecase @Inject constructor(
     suspend fun completeSession(session: Session){
         return repository.completeSession(session)
     }
+    suspend fun completeIfExpired() {
+        repository.completeIfExpired()
+    }
 }

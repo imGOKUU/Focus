@@ -11,6 +11,9 @@ class AddGoalUseCase @Inject constructor(
     suspend operator fun invoke(goal: Goal): Long {
         return repository.addGoal(goal)
     }
+    suspend operator fun invoke(goal: Goal, blockedApps: List<BlockedApp>): Long {
+        return repository.addGoalWithBlockedApps(goal, blockedApps)
+    }
     suspend fun upsertBlockedApp(blockedApp:BlockedApp){
         repository.upsertBlockedApp(blockedApp)
     }
