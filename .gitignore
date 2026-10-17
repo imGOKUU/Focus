@@ -18,3 +18,9 @@ local.properties
 keystore.properties
 *.jks
 *.keystore
+
+# Personal planning notes - kept locally, not published.
+SPEC.md
+ORIGINAL_SPEC.md
+LEARNINGS.md
+DECISIONS.md
