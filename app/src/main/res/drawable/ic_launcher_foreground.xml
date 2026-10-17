@@ -1,30 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Gelu mark ("gelu" is Latin for ice): an ice cube in front of a low sun,
+  a drip running off one corner and a drop falling - time melting away while
+  you give it to something. Everything sits inside the adaptive-icon safe
+  zone (a 66dp circle at the centre of the 108dp canvas).
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
+
+    <!-- Sun, peeking out top right -->
+    <path android:pathData="M68,35m-12,0a12,12 0,1 1,24 0a12,12 0,1 1,-24 0">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
+            <gradient android:type="linear" android:startX="68" android:startY="23" android:endX="68" android:endY="47">
+                <item android:offset="0" android:color="#FFF7D2BC" />
+                <item android:offset="1" android:color="#FFF0B99A" />
             </gradient>
         </aapt:attr>
     </path>
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+
+    <!-- Drip running off the cube's lower edge (drawn first so the cube overlaps its root) -->
+    <path android:pathData="M57.5,69.9Q59.8,69.9 60.2,72.6Q60.7,76.2 63,76.2Q65.3,76.2 65.3,73.4Q65.3,70.6 67,69.9Z" android:fillColor="#FFBDD7E3" />
+
+    <!-- Ice cube body, lit from the top left -->
+    <path android:pathData="M45,34H63Q72,34 72,43V61Q72,70 63,70H45Q36,70 36,61V43Q36,34 45,34Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="38" android:startY="36" android:endX="70" android:endY="70">
+                <item android:offset="0" android:color="#FFF4FAFC" />
+                <item android:offset="0.6" android:color="#FFDCEBF2" />
+                <item android:offset="1" android:color="#FFB7D3E0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Top face, a shade lighter - gives the cube its depth -->
+    <path android:pathData="M45,34H63Q72,34 72,43V45.5Q64,41.5 54,41.5Q44,41.5 36,45.5V43Q36,34 45,34Z" android:fillColor="#A6FFFFFF" />
+
+    <!-- Light catching the front edge -->
+    <path android:pathData="M41,50V60" android:strokeWidth="3" android:strokeLineCap="round" android:strokeColor="#8CFFFFFF" />
+
+    <!-- The falling drop -->
+    <path android:pathData="M63,79.5Q65.6,82.4 65.6,84.1A2.6,2.6 0,0 1,60.4 84.1Q60.4,82.4 63,79.5Z" android:fillColor="#FFCFE4EE" />
 </vector>

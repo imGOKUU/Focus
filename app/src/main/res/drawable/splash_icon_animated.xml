@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Splash icon (Android 12+ animates it; older versions show the first frame).
+  The launcher mark on a 240dp canvas with the visible 160dp circle - the
+  same 2/3 ratio as an adaptive icon, so the artwork is reused as-is. The
+  sun rises a touch, then the drop gathers under the drip and falls.
+-->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:width="240dp"
+            android:height="240dp"
+            android:viewportWidth="108"
+            android:viewportHeight="108">
+            <group android:name="sun" android:translateY="5">
+                <path android:pathData="M68,35m-12,0a12,12 0,1 1,24 0a12,12 0,1 1,-24 0" android:fillColor="#FFF0B99A" />
+            </group>
+            <path android:pathData="M57.5,69.9Q59.8,69.9 60.2,72.6Q60.7,76.2 63,76.2Q65.3,76.2 65.3,73.4Q65.3,70.6 67,69.9Z" android:fillColor="#FFBDD7E3" />
+            <path android:pathData="M45,34H63Q72,34 72,43V61Q72,70 63,70H45Q36,70 36,61V43Q36,34 45,34Z" android:fillColor="#FFE3EFF4" />
+            <path android:pathData="M45,34H63Q72,34 72,43V45.5Q64,41.5 54,41.5Q44,41.5 36,45.5V43Q36,34 45,34Z" android:fillColor="#A6FFFFFF" />
+            <path android:pathData="M41,50V60" android:strokeWidth="3" android:strokeLineCap="round" android:strokeColor="#8CFFFFFF" />
+            <group android:name="drop" android:translateY="-5">
+                <path android:name="dropPath" android:pathData="M63,79.5Q65.6,82.4 65.6,84.1A2.6,2.6 0,0 1,60.4 84.1Q60.4,82.4 63,79.5Z" android:fillAlpha="0" android:fillColor="#FFCFE4EE" />
+            </group>
+        </vector>
+    </aapt:attr>
+
+    <target android:name="sun">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="700" android:interpolator="@android:interpolator/fast_out_slow_in"
+                android:propertyName="translateY" android:valueFrom="5" android:valueTo="0" />
+        </aapt:attr>
+    </target>
+    <target android:name="drop">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="450" android:startOffset="450" android:interpolator="@android:interpolator/accelerate_quad"
+                android:propertyName="translateY" android:valueFrom="-5" android:valueTo="0" />
+        </aapt:attr>
+    </target>
+    <target android:name="dropPath">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="250" android:startOffset="400"
+                android:propertyName="fillAlpha" android:valueFrom="0" android:valueTo="1" />
+        </aapt:attr>
+    </target>
+</animated-vector>

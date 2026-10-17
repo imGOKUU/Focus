@@ -170,3 +170,62 @@ A running record of the choices made while building this app and *why* — separ
 **Timer formatting — two different formats, both taken literally from the spec's own examples, not unified:** the hero timer is always zero-padded `HH:MM:SS` (`00:42:17`, so digit width never shifts — paired with a `fontFeatureSettings = "tnum"` fix on `TimerDisplayLarge`/`TimerDisplayMinimal` in `Type.kt`, fulfilling a comment that had described tabular figures as intended but never actually set them); the total-time label is `H:MM:SS` with no hour padding (`1:00:00 total`), matching the spec's own inconsistent-looking but exact examples. Confirmed with the user rather than silently normalizing to one format.
 
 **Ice/can illustration:** hand-drawn `Canvas`/`Path` (no image/Lottie assets), same technique as `WelcomeScreen`'s mountain illustration. The can is tinted with the goal's own `GoalAccent.onChip` color (ties the session visual back to that goal's identity in the goal list). The ice band's jagged-edge phase is seeded once via `remember { Random.nextFloat() * 2f * PI }` — deliberately *not* re-derived per frame/recomposition, since only the band's height should animate; re-seeding the jag per frame would make it visibly crawl/boil as the timer ticks, contradicting the spec's "smooth... not cartoonish" requirement. A subtle `rememberInfiniteTransition` alpha pulse is always running but only visually applied when progress ≤ 10% remaining (gating the *value*, not the animation call, avoids any restart/flash at that threshold) — matches the spec's "slightly more noticeable in the final ~10%" note.
+---
+
+## 15. Shared depth/card design system; whole app follows it
+
+**Decision:** One set of tokens and components for every screen: two corner radii (16dp surfaces, 12dp nested tiles), a layered warm-tinted shadow system (`components/Depth.kt`, built on Compose 1.10's `dropShadow`/`innerShadow`), and shared controls (`FocusSurface`, `FocusPrimaryButton`, `FocusSecondaryButton`, `FocusBackButton`, `IconTile`, `ValueChip`, `FocusDialog`, `FocusBottomSheet`).
+
+**Rationale:** User asked for more depth, card-based layout and that "the whole application needs to follow the same design pattern". Centralising it means new screens inherit the look instead of re-deriving shadows and shapes.
+
+---
+
+## 16. Critique-driven MVP pass (Today, review sheet, end session, edit/delete, minimal mode)
+
+**Decision:** After walking the app as a user, filled the spec's MVP gaps: onboarding shown once (`AppPreferences`/DataStore); a real **Today** screen (time left, done ring, live running/paused card, one primary "next step" button) replacing the old Add-Goals home with its dead Continue button; a **pre-session review sheet** (duration + exact apps blocked) instead of one-tap start; **End session** with two-step confirm; a **session result** screen; goal **edit/delete** (soft delete, history kept) with icon/color choice and app search; spec's **minimal mode**.
+
+**Behavior change worth knowing:** a session is now allocated *what's left of today's time* (`DailyGoal.allocatedSeconds - completedSeconds`), and ending early or switching goals credits the time actually spent to `DailyGoal.completedSeconds`. Before, a goal restarted from its full duration after any interruption, and a completed goal could be restarted for a full new session.
+
+**Not done yet:** see #18 for Settings, notification and the permission step.
+
+---
+
+## 17. History: month calendar from DailyGoal rows, facts only
+
+**Decision:** History (opened from the calendar button on Today) shows a month grid with one dot per day (light = planned but nothing given, darker = part, solid = all of it), the selected day's goals (given vs planned), and per-goal totals for the month. Built straight from `DailyGoal` rows (`completedSeconds` / `allocatedSeconds` / `status`) plus a running session's live time for today; deleted goals still appear by name (`GoalDao.observeAllGoals`).
+
+**Deliberately not included:** streaks, scores, percentages or badges - the spec rules them out. "Days with focus" and "time given" are the only aggregates.
+
+**Known limit:** a day only lists goals that were *started* that day (a `DailyGoal` row is created on first start), so a goal never touched on a past day doesn't show as "-". Showing it would mean generating daily rows for every active goal each day (spec V2: "automatic daily goal generation").
+
+---
+
+## 18. Settings, session notification (no foreground service), onboarding permission step
+
+**Notification:** `SessionNotifier` keeps one notification in step with the active session - a running countdown drawn by the system chronometer (`setUsesChronometer` + `setChronometerCountDown`, `setTimeoutAfter` at the end time) with Pause, or "paused - N left" with Resume, plus a "done" note if a session completes while the app isn't in the foreground. **Not a foreground service:** the timer is clock-based, so nothing has to keep running for the countdown to be right, and it avoids foreground-service-type declarations. End isn't offered on the notification (spec: ending early is a two-step, in-app choice).
+
+**Background completion needs an alarm:** testing showed Android's cached-app freezer suspends the process once the user leaves the app, so `SessionCompletionWatcher`'s in-process timer stops and a background session was only marked complete when the app was next opened. `SessionEndAlarm` schedules an alarm at the end time (exact below Android 12 or with "Alarms & reminders" access, otherwise inexact allow-while-idle - may be minutes late in Doze). `SCHEDULE_EXACT_ALARM` is deliberately not requested yet.
+
+**Permission step:** onboarding ends with "Two small things" - Accessibility (with the disclosure text Play expects before sending the user to settings) and notifications (runtime prompt on 13+, app notification settings after). Both optional; Settings shows their live status. `MainActivity.onResume` re-syncs the notification because permission is granted outside the app.
+
+**Settings:** countdown notification, completion note, start in minimal mode, keep screen on, replay intro, privacy/version. **Appearance is deliberately absent** - the dark scheme is still an undesigned placeholder (see Theme.kt).
+
+---
+
+## 19. Name "Gelu", icon, splash screen, guided setup
+
+**Name:** **Gelu** - Latin for frost/ice, tying the name to the melting-ice session visual; short, calm, not a "strict study app" name. Earlier picks were dropped after checks: *Thawly* (an existing AI productivity tool), *Floe* (FLOE focus-sound app), *Otium* (an existing app blocker), *Clepsydra* (existing timer apps). The only "Gelu" found was a 2017 Steam platformer, a different category. Web search only - a trademark/Play Store check is still needed before publishing. `applicationId`/namespace are unchanged (`com.demo.myapplication`) - changing them is a release decision.
+
+**Icon:** vector adaptive icon - ice cube with a lit top face in front of a low sun, a drip off one corner and a falling drop, on the deep slate brand colour; monochrome layer for Android 13 themed icons; a vector layer-list replaces the template bitmaps for Android 7.x.
+
+**Splash:** `androidx.core:core-splashscreen` (consistent on API 24-35+), cream background, the mark on a slate circle, an animated drop on Android 12+. Held only until the start screen (intro vs Today) is known, then the icon swells and fades out. The app theme's window background is cream so there's no white flash.
+
+**Setup (replaces the permission-only step):** name (optional, for the Today greeting, stays on-device) -> goals from one-tap templates with the spec's duration presets, or a custom one -> "What pulls you away?" with common distracting apps pre-selected when installed (shown only if goals were picked) -> permissions -> "You're all set". Everything is saved in one go at the end, so abandoning setup half-way leaves nothing behind. Still no account or sign-up, per the spec.
+
+---
+
+## 20. External UI review: verified point by point
+
+Each suggestion was checked against the running app before acting. **Fixed:** status-bar icons were light on cream (theme never set `windowLightStatusBar`; the splash hand-off also reset `enableEdgeToEdge`, so it's set in the theme too); sub-minute durations ("14s of 1m") now read "<1m"; Today summary shows done + planned with a bar, so "left today" is unambiguous; completed goals less faded; thicker progress bars; "Continue X" for part-done goals; blocked apps shown with their real icons; visible sheet drag handle; Focus screen content centred with a larger timer, a running/paused pill and a smooth pause fade; **Focus screen no longer claims apps are blocked when the Accessibility service is off** (shows "Blocking is off · Turn on"); calendar selected day filled, today ringed, clearer legend and stat labels, a day-progress bar; Settings explains why notification toggles are disabled; greeting/date split so large fonts wrap cleanly (verified at 1.5x).
+
+**Rejected as already done or by design:** end-session confirmation and completion summary (exist since #16), daily progress updating on session end (Room-driven), animated ring, nav-bar overlap in History (content is inset-padded and scrolls), toggle accessibility (full-row `Role.Switch`), button proportions/back buttons/sheet animation (deliberate and consistent).

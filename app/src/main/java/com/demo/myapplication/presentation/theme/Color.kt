@@ -33,6 +33,9 @@ object GoalAccents {
     val Blue = GoalAccent(chipBackground = Color(0xFFD3E3F7), onChip = Color(0xFF35619E))
     val Green = GoalAccent(chipBackground = Color(0xFFD9EFD4), onChip = Color(0xFF3E8B45))
     val Purple = GoalAccent(chipBackground = Color(0xFFE3DAF6), onChip = Color(0xFF6B4FA0))
+    // Warm pair that sits naturally in the cream palette.
+    val Amber = GoalAccent(chipBackground = Color(0xFFF6E3C6), onChip = Color(0xFF9A6420))
+    val Rose = GoalAccent(chipBackground = Color(0xFFF4DAD6), onChip = Color(0xFFA34D45))
 
     val defaultCycle = listOf(Teal, Blue, Green, Purple)
 
@@ -51,3 +54,17 @@ val FocusMountainNear = Color(0xFF8494A0)
 // 13-15 describe it in prose only) - picked to read as "ice/frost" against
 // the cream background without needing a mockup to match exactly.
 val FocusIceAccent = Color(0xFFEAF3F7)
+
+// Depth system (components/Depth.kt). Shadows are tinted warm brown rather
+// than black so they sit naturally on the cream background instead of
+// reading as grey smudges; the card/inset tones are the same cream family,
+// one step lighter (raised) and one step deeper (pressed in).
+val FocusShadow = Color(0xFF5B4330)
+val FocusCardSurfaceLow = Color(0xFFFBF8F2)   // bottom stop of a card's top-to-bottom gradient
+val FocusInsetSurface = Color(0xFFF1ECE2)     // pressed-in wells (wheel band, chips)
+val FocusBackgroundDeep = Color(0xFFEFE8DC)   // warm glow at the page's lower edge
+
+// Destructive actions (End session, Delete goal) - a warm brick red from the
+// Rose goal ramp rather than Material's stock error red, so it stays in the
+// palette while still reading clearly as "careful".
+val FocusDanger = Color(0xFFA34D45)

@@ -1,7 +1,12 @@
 package com.demo.myapplication.presentation.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
@@ -14,8 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +31,8 @@ object FocusLayout {
     val CardHorizontalPadding = 16.dp
     val SectionLabelGap = 10.dp
     val SectionGap = 28.dp
+    val ScreenTopGap = 8.dp
+    val HeaderGap = 20.dp
 
     // Below this height for a screen's flexible middle region (phone
     // landscape, split screen), sections sit side by side instead of stacked.
@@ -51,29 +56,45 @@ fun screenVerticalInsets(): WindowInsets =
         .only(WindowInsetsSides.Vertical)
 
 /**
- * Shared elevated container for a screen section: theme large radius (20dp),
- * card surface, and a soft low-opacity shadow. Content is clipped to the
- * shape so a scrolling list never paints past the rounded corners.
+ * Shared elevated container for a screen section: the app-wide card radius
+ * (16dp), raised with the shared depth system (see Depth.kt). Content is
+ * clipped to the shape so a scrolling list never paints past the corners.
  */
 @Composable
 fun SectionCard(
     modifier: Modifier = Modifier,
+    depth: Depth = Depth.Medium,
     content: @Composable () -> Unit
 ) {
-    val shape = MaterialTheme.shapes.large
-    val shadowTint = MaterialTheme.colorScheme.onBackground
-    Box(
-        modifier = modifier
-            .shadow(
-                elevation = 6.dp,
-                shape = shape,
-                ambientColor = shadowTint.copy(alpha = 0.05f),
-                spotColor = shadowTint.copy(alpha = 0.14f)
-            )
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-    ) {
+    FocusSurface(modifier = modifier, depth = depth) {
         content()
+    }
+}
+
+/**
+ * [SectionLabel] with an optional live summary on the right (e.g. "1h 30m a
+ * day", "3 selected"), so a section's current value is readable at a glance.
+ */
+@Composable
+fun SectionHeader(text: String, modifier: Modifier = Modifier, trailing: String? = null) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SectionLabel(text, modifier = Modifier.weight(1f))
+        if (trailing != null) {
+            AnimatedContent(
+                targetState = trailing,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "sectionTrailing"
+            ) { value ->
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
     }
 }
 

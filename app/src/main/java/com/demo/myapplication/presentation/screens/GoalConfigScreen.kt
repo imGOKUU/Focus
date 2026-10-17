@@ -1,8 +1,51 @@
 package com.demo.myapplication.presentation.screens
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.demo.myapplication.presentation.components.Depth
+import com.demo.myapplication.presentation.components.FocusBottomSheet
+import com.demo.myapplication.presentation.components.FocusDialog
+import com.demo.myapplication.presentation.components.FocusSurface
+import com.demo.myapplication.presentation.components.SectionLabel
+import com.demo.myapplication.presentation.theme.FocusDanger
+import com.demo.myapplication.presentation.theme.GoalVisuals
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import com.demo.myapplication.presentation.components.FocusBackButton
+import com.demo.myapplication.presentation.components.FocusPrimaryButton
+import com.demo.myapplication.presentation.components.IconTile
+import com.demo.myapplication.presentation.components.SectionHeader
+import com.demo.myapplication.presentation.components.entrance
+import com.demo.myapplication.presentation.components.insetSurface
+import com.demo.myapplication.presentation.theme.CardShape
+import com.demo.myapplication.presentation.theme.FocusShadow
+import com.demo.myapplication.presentation.theme.FocusSoftAccent
+import com.demo.myapplication.presentation.theme.TileShape
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,13 +68,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -59,10 +96,7 @@ import com.demo.myapplication.presentation.components.CardRowDivider
 import com.demo.myapplication.presentation.components.FocusLayout
 import com.demo.myapplication.presentation.components.ResponsiveScreen
 import com.demo.myapplication.presentation.components.SectionCard
-import com.demo.myapplication.presentation.components.SectionLabel
 import com.demo.myapplication.presentation.components.screenVerticalInsets
-import com.demo.myapplication.presentation.theme.ButtonLabel
-import com.demo.myapplication.presentation.theme.ButtonPillShape
 import kotlin.math.abs
 
 /**
@@ -115,9 +149,17 @@ fun GoalConfigScreen(
     onMinutesChange: (Int) -> Unit = {},
     blockableApps: List<BlockableAppItem> = emptyList(),
     onToggleApp: (BlockableAppItem) -> Unit = {},
+    isEditing: Boolean = false,
+    iconKey: String = GoalVisuals.DefaultIcon,
+    colorKey: String = GoalVisuals.accents.first().first,
+    onIconChange: (String) -> Unit = {},
+    onColorChange: (String) -> Unit = {},
+    onDelete: () -> Unit = {},
     onSave: () -> Unit = {}
 ) {
     var attemptedSave by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var showAppearance by remember { mutableStateOf(false) }
     val isNameValid = goalName.isNotBlank()
     val isDurationValid = selectedHours > 0 || selectedMinutes > 0
 
@@ -126,49 +168,58 @@ fun GoalConfigScreen(
         // and Save button clear of the status and navigation bars.
         contentModifier = Modifier.windowInsetsPadding(screenVerticalInsets())
     ) {
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(FocusLayout.ScreenTopGap))
 
-        Icon(
-            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.clickable {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .entrance(index = 0),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FocusBackButton(onClick = {
                 println("Clicked: GoalConfig Back icon")
                 onBack()
-            }
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-        BasicTextField(
-            value = goalName,
-            onValueChange = onGoalNameChange,
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = MaterialTheme.typography.headlineLarge.copy(
-                color = MaterialTheme.colorScheme.onBackground
-            ),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            decorationBox = { innerTextField ->
-                if (goalName.isEmpty()) {
-                    Text(
-                        text = "Goal name",
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            })
+            Text(
+                text = if (isEditing) "Edit goal" else "New goal",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp)
+            )
+            if (isEditing) {
+                FocusSurface(
+                    modifier = Modifier.size(44.dp),
+                    shape = TileShape,
+                    depth = Depth.Low,
+                    onClick = { confirmDelete = true },
+                    onClickLabel = "Delete goal",
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.DeleteOutline,
+                        contentDescription = "Delete goal",
+                        tint = FocusDanger,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
-                innerTextField()
             }
-        )
-
-        if (attemptedSave && !isNameValid) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Give this goal a name",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error
-            )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(FocusLayout.HeaderGap))
+
+        GoalNameSection(
+            goalName = goalName,
+            onGoalNameChange = onGoalNameChange,
+            iconKey = iconKey,
+            colorKey = colorKey,
+            onIconClick = { showAppearance = true },
+            showError = attemptedSave && !isNameValid,
+            modifier = Modifier.entrance(index = 1)
+        )
+
+        Spacer(modifier = Modifier.height(FocusLayout.SectionGap))
 
         // The picker + app list region takes all height between the name
         // field and Save. Only the app list inside it scrolls; the name
@@ -207,49 +258,85 @@ fun GoalConfigScreen(
                     modifier = Modifier.fillMaxSize(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.weight(1f).entrance(index = 2)) {
                         dailyTime(3, compactItemHeight, CompactCardVerticalPadding)
                     }
-                    Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    Column(modifier = Modifier.weight(1f).fillMaxHeight().entrance(index = 3)) {
                         AppsToBlockSection(blockableApps, onToggleApp)
                     }
                 }
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    dailyTime(5, WheelItemHeight, CardVerticalPadding)
+                    Column(modifier = Modifier.entrance(index = 2)) {
+                        dailyTime(5, WheelItemHeight, CardVerticalPadding)
+                    }
                     Spacer(modifier = Modifier.height(FocusLayout.SectionGap))
-                    AppsToBlockSection(blockableApps, onToggleApp)
+                    Column(modifier = Modifier.weight(1f).entrance(index = 3)) {
+                        AppsToBlockSection(blockableApps, onToggleApp)
+                    }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
+        // A failed save shakes the button (and the errors above animate in),
+        // so it's obvious the tap registered and what still needs doing.
+        val shake = remember { Animatable(0f) }
+        val scope = rememberCoroutineScope()
+        FocusPrimaryButton(
+            text = if (isEditing) "Save changes" else "Save goal",
             onClick = {
                 println("Clicked: GoalConfig Save button")
                 if (isNameValid && isDurationValid) {
                     onSave()
                 } else {
                     attemptedSave = true
+                    scope.launch {
+                        shake.snapTo(0f)
+                        shake.animateTo(0f, keyframes {
+                            durationMillis = 360
+                            -10f at 50
+                            10f at 110
+                            -7f at 170
+                            7f at 230
+                            -3f at 290
+                        })
+                    }
                 }
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
-            shape = ButtonPillShape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        ) {
-            Text(
-                text = "Save",
-                style = ButtonLabel
-            )
-        }
+                .graphicsLayer { translationX = shake.value.dp.toPx() }
+                .entrance(index = 4)
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    if (confirmDelete) {
+        FocusDialog(
+            title = "Delete ${goalName.ifBlank { "this goal" }}?",
+            message = "It'll be removed from Today. Time you've already given it stays in your history.",
+            confirmText = "Delete",
+            dismissText = "Keep",
+            destructive = true,
+            onConfirm = {
+                confirmDelete = false
+                onDelete()
+            },
+            onDismiss = { confirmDelete = false }
+        )
+    }
+
+    if (showAppearance) {
+        GoalAppearanceSheet(
+            iconKey = iconKey,
+            colorKey = colorKey,
+            onIconChange = onIconChange,
+            onColorChange = onColorChange,
+            onDismiss = { showAppearance = false }
+        )
     }
 }
 
@@ -266,7 +353,10 @@ private fun ColumnScope.DailyTimeSection(
     verticalPadding: Dp,
     showError: Boolean
 ) {
-    SectionLabel("DAILY TIME")
+    SectionHeader(
+        text = "DAILY TIME",
+        trailing = formatDailyDuration(selectedHours, selectedMinutes)
+    )
     Spacer(modifier = Modifier.height(FocusLayout.SectionLabelGap))
     SectionCard(modifier = Modifier.fillMaxWidth()) {
         DailyTimeWheelPicker(
@@ -283,12 +373,12 @@ private fun ColumnScope.DailyTimeSection(
                 .padding(horizontal = FocusLayout.CardHorizontalPadding, vertical = verticalPadding)
         )
     }
-    if (showError) {
-        Spacer(modifier = Modifier.height(6.dp))
+    AnimatedVisibility(visible = showError) {
         Text(
             text = "Pick a daily time above zero",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.error
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(top = 6.dp)
         )
     }
 }
@@ -298,7 +388,11 @@ private fun ColumnScope.AppsToBlockSection(
     blockableApps: List<BlockableAppItem>,
     onToggleApp: (BlockableAppItem) -> Unit
 ) {
-    SectionLabel("APPS TO BLOCK")
+    val blockedCount = blockableApps.count { it.isBlocked }
+    SectionHeader(
+        text = "APPS TO BLOCK",
+        trailing = if (blockedCount > 0) "$blockedCount selected" else null
+    )
     Spacer(modifier = Modifier.height(FocusLayout.SectionLabelGap))
     // The weight lives on this Box, not the card: the Box claims all the
     // remaining height (keeping Save anchored), while the card inside only
@@ -310,6 +404,11 @@ private fun ColumnScope.AppsToBlockSection(
             .fillMaxWidth()
     ) {
         SectionCard(modifier = Modifier.fillMaxWidth()) {
+            var query by rememberSaveable { mutableStateOf("") }
+            val visibleApps = remember(blockableApps, query) {
+                if (query.isBlank()) blockableApps
+                else blockableApps.filter { it.appName.contains(query.trim(), ignoreCase = true) }
+            }
             if (blockableApps.isEmpty()) {
                 Text(
                     text = "No apps to show",
@@ -323,11 +422,37 @@ private fun ColumnScope.AppsToBlockSection(
             } else {
                 // Every real launchable app on the device (potentially 100+,
                 // see DECISIONS.md) - bounded and independently scrolling.
-                LazyColumn(contentPadding = PaddingValues(vertical = 4.dp)) {
-                    itemsIndexed(blockableApps, key = { _, app -> app.packageName }) { index, app ->
-                        AppToggleRow(app = app, onToggle = { onToggleApp(app) })
-                        if (index < blockableApps.lastIndex) {
-                            CardRowDivider()
+                Column {
+                    // Only worth the space once the list is long enough to hunt through.
+                    if (blockableApps.size > SearchThreshold) {
+                        AppSearchField(
+                            query = query,
+                            onQueryChange = { query = it },
+                            modifier = Modifier.padding(
+                                start = FocusLayout.CardHorizontalPadding,
+                                end = FocusLayout.CardHorizontalPadding,
+                                top = 12.dp,
+                                bottom = 4.dp
+                            )
+                        )
+                    }
+                    if (visibleApps.isEmpty()) {
+                        Text(
+                            text = "No apps match \"${query.trim()}\"",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = FocusLayout.CardHorizontalPadding, vertical = 20.dp)
+                        )
+                    }
+                    LazyColumn(
+                        modifier = Modifier.weight(1f, fill = false),
+                        contentPadding = PaddingValues(vertical = 4.dp)
+                    ) {
+                        itemsIndexed(visibleApps, key = { _, app -> app.packageName }) { index, app ->
+                            AppToggleRow(app = app, onToggle = { onToggleApp(app) })
+                            if (index < visibleApps.lastIndex) {
+                                CardRowDivider()
+                            }
                         }
                     }
                 }
@@ -367,10 +492,7 @@ private fun DailyTimeWheelPicker(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(itemHeight)
-                .background(
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                    shape = MaterialTheme.shapes.medium
-                )
+                .insetSurface(TileShape)
         )
 
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -379,7 +501,7 @@ private fun DailyTimeWheelPicker(
                 selectedValue = selectedHours,
                 onSelectedValueChange = onHoursChange,
                 label = { "$it" },
-                unit = "hours",
+                unit = if (selectedHours == 1) "hour" else "hours",
                 visibleRows = visibleRows,
                 itemHeight = itemHeight,
                 modifier = Modifier.weight(1f)
@@ -512,22 +634,27 @@ private fun Wheel(
 
 
 @Composable
-private fun AppToggleRow(app: BlockableAppItem, onToggle: () -> Unit) {
+internal fun AppToggleRow(app: BlockableAppItem, onToggle: () -> Unit) {
+    // The whole row is the toggle (not just the small switch), and is
+    // announced as one switch with the app's name to screen readers.
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .toggleable(
+                value = app.isBlocked,
+                role = Role.Switch,
+                onValueChange = {
+                    println("Clicked: GoalConfig app toggle - ${app.appName}")
+                    onToggle()
+                }
+            )
             .heightIn(min = FocusLayout.RowMinHeight)
             .padding(horizontal = FocusLayout.CardHorizontalPadding, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(FocusLayout.RowIconSize)
-                .background(
-                    if (app.icon != null) MaterialTheme.colorScheme.surfaceVariant else app.fallbackAccentColor(),
-                    shape = RoundedCornerShape(11.dp)
-                ),
-            contentAlignment = Alignment.Center
+        IconTile(
+            color = if (app.icon != null) MaterialTheme.colorScheme.surfaceContainer else app.fallbackAccentColor(),
+            glowColor = if (app.icon != null) FocusShadow else app.fallbackAccentColor()
         ) {
             val icon = app.icon
             if (icon != null) {
@@ -560,18 +687,238 @@ private fun AppToggleRow(app: BlockableAppItem, onToggle: () -> Unit) {
 
         Switch(
             checked = app.isBlocked,
-            onCheckedChange = {
-                println("Clicked: GoalConfig app toggle - ${app.appName}")
-                onToggle()
-            },
+            onCheckedChange = null,
             colors = SwitchDefaults.colors(
                 checkedTrackColor = MaterialTheme.colorScheme.primary,
                 checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                 checkedBorderColor = Color.Transparent,
-                uncheckedTrackColor = Color(0xFFDDE5EC),
+                uncheckedTrackColor = FocusSoftAccent,
                 uncheckedThumbColor = Color.White,
                 uncheckedBorderColor = Color.Transparent
             )
         )
+    }
+}
+
+// "1h 30m a day" - the live summary beside the DAILY TIME label.
+private fun formatDailyDuration(hours: Int, minutes: Int): String = when {
+    hours > 0 && minutes > 0 -> "${hours}h ${minutes}m a day"
+    hours > 0 -> "${hours}h a day"
+    minutes > 0 -> "${minutes}m a day"
+    else -> "Not set"
+}
+
+/**
+ * The goal's name as a labelled input card. The card's rim warms to the
+ * primary color while it's being edited, so focus is visible at a glance.
+ */
+@Composable
+private fun GoalNameSection(
+    goalName: String,
+    onGoalNameChange: (String) -> Unit,
+    iconKey: String,
+    colorKey: String,
+    onIconClick: () -> Unit,
+    showError: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val focusManager = LocalFocusManager.current
+    val rimColor by animateColorAsState(
+        targetValue = when {
+            showError -> MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+            isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+            else -> Color.Transparent
+        },
+        label = "nameRim"
+    )
+
+    Column(modifier = modifier) {
+        SectionHeader(text = "GOAL NAME")
+        Spacer(modifier = Modifier.height(FocusLayout.SectionLabelGap))
+        SectionCard(modifier = Modifier.fillMaxWidth()) {
+          Row(
+              modifier = Modifier
+                  .fillMaxWidth()
+                  .border(1.5.dp, rimColor, CardShape)
+                  .padding(start = 12.dp),
+              verticalAlignment = Alignment.CenterVertically
+          ) {
+            // The goal's icon and color - tap to change. Shown live here so
+            // the choice is visible right beside the name it belongs to.
+            val accent = GoalVisuals.accent(colorKey)
+            IconTile(
+                color = accent.chipBackground,
+                glowColor = accent.onChip,
+                modifier = Modifier
+                    .clip(TileShape)
+                    .clickable(onClickLabel = "Change icon and color", onClick = onIconClick)
+            ) {
+                Icon(GoalVisuals.icon(iconKey), contentDescription = "Goal icon", tint = accent.onChip, modifier = Modifier.size(20.dp))
+            }
+            BasicTextField(
+                value = goalName,
+                onValueChange = onGoalNameChange,
+                singleLine = true,
+                interactionSource = interactionSource,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                textStyle = MaterialTheme.typography.titleLarge.copy(
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp, vertical = 16.dp),
+                decorationBox = { innerTextField ->
+                    Box {
+                        if (goalName.isEmpty()) {
+                            Text(
+                                text = "e.g. Mathematics",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            )
+          }
+        }
+        AnimatedVisibility(visible = showError) {
+            Text(
+                text = "Give this goal a name",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 6.dp)
+            )
+        }
+    }
+}
+
+private const val SearchThreshold = 8
+
+@Composable
+internal fun AppSearchField(query: String, onQueryChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .insetSurface(TileShape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Search,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        BasicTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            modifier = Modifier.weight(1f),
+            decorationBox = { inner ->
+                Box {
+                    if (query.isEmpty()) {
+                        Text(
+                            text = "Search apps",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                    inner()
+                }
+            }
+        )
+        if (query.isNotEmpty()) {
+            Icon(
+                imageVector = Icons.Outlined.Close,
+                contentDescription = "Clear search",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .size(18.dp)
+                    .clickable { onQueryChange("") }
+            )
+        }
+    }
+}
+
+/** Icon grid and color swatches for a goal - opened from the tile beside its name. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GoalAppearanceSheet(
+    iconKey: String,
+    colorKey: String,
+    onIconChange: (String) -> Unit,
+    onColorChange: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val accent = GoalVisuals.accent(colorKey)
+    FocusBottomSheet(onDismiss = onDismiss) {
+        Text(
+            text = "Icon & color",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        SectionLabel("COLOR")
+        Spacer(modifier = Modifier.height(FocusLayout.SectionLabelGap))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            GoalVisuals.accents.forEach { (key, option) ->
+                val selected = key == colorKey
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, if (selected) option.onChip else Color.Transparent, CircleShape)
+                        .padding(4.dp)
+                        .clip(CircleShape)
+                        .background(option.onChip)
+                        .clickable(onClickLabel = "Use $key") { onColorChange(key) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (selected) {
+                        Icon(Icons.Outlined.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        SectionLabel("ICON")
+        Spacer(modifier = Modifier.height(FocusLayout.SectionLabelGap))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            GoalVisuals.icons.forEach { (key, icon) ->
+                val selected = key == iconKey
+                IconTile(
+                    color = if (selected) accent.chipBackground else MaterialTheme.colorScheme.surfaceContainer,
+                    glowColor = if (selected) accent.onChip else FocusShadow,
+                    size = 48.dp,
+                    modifier = Modifier
+                        .border(2.dp, if (selected) accent.onChip else Color.Transparent, TileShape)
+                        .clip(TileShape)
+                        .clickable { onIconChange(key) }
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = key.replace('_', ' '),
+                        tint = if (selected) accent.onChip else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        FocusPrimaryButton(text = "Done", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
     }
 }

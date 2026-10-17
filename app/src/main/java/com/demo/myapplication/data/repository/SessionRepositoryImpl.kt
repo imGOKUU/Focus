@@ -7,7 +7,9 @@ import com.demo.myapplication.data.local.entity.DailyGoal
 import com.demo.myapplication.data.local.entity.GoalStatus
 import com.demo.myapplication.data.local.entity.Session
 import com.demo.myapplication.data.local.entity.SessionStatus
+import com.demo.myapplication.domain.repository.SessionOutcome
 import com.demo.myapplication.domain.repository.SessionRepository
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Duration
@@ -31,7 +33,7 @@ private val dailyGoalDao: DailyGoalDao,
   suspend override fun startOrAttachSession(
         goalId: Long,
         dailyAllocatedSeconds: Long
-    ): Session = mutex.withLock {
+    ): Session? = mutex.withLock {
       val now = timeProvider.now()
       val activeSession = sessionDao.getActiveSession()
       if (activeSession != null) {
@@ -43,38 +45,60 @@ private val dailyGoalDao: DailyGoalDao,
           }
           // a diff session is in progress so end it - as COMPLETED if its time
           // already ran out (it just wasn't recorded yet), else INTERRUPTED
+          // with the time it did get credited to its goal
           if (timeProvider.remainingSeconds(activeSession, now) == 0L) {
               markCompleted(activeSession)
           } else {
-              sessionDao.update(
-                  activeSession.copy(
-                      status = SessionStatus.INTERRUPTED,
-                      endedAt = now
-                  )
-              )
+              markInterrupted(activeSession, now)
           }
       }
 
       val today = now.atZone(ZoneId.systemDefault()).toLocalDate()
-      val dailyGoalId = dailyGoalDao.getForGoalAndDate(goalId = goalId, date = today)?.id
-          ?: dailyGoalDao.upsert(
-              DailyGoal(
-                  goalId = goalId,
-                  date = today,
-                  allocatedSeconds = dailyAllocatedSeconds
-              )
-          )
-      // make a new session
+      val dailyGoal = dailyGoalDao.getForGoalAndDate(goalId = goalId, date = today)
+          ?: DailyGoal(goalId = goalId, date = today, allocatedSeconds = dailyAllocatedSeconds).let {
+              it.copy(id = dailyGoalDao.upsert(it))
+          }
+      // Only what's left of today's time - doing 20 of 60 minutes, then coming
+      // back, continues from 40 minutes rather than starting the hour over.
+      val remainingToday = dailyGoal.allocatedSeconds - dailyGoal.completedSeconds
+      if (dailyGoal.status == GoalStatus.COMPLETED || remainingToday <= 0L) return@withLock null
+
       val newSession = Session(
-          dailyGoalId = dailyGoalId,
+          dailyGoalId = dailyGoal.id,
           startedAt = now,
           runningSince = now,
-          allocatedSeconds = dailyAllocatedSeconds,
+          allocatedSeconds = remainingToday,
           status = SessionStatus.STARTED
       )
       val id = sessionDao.upsert(newSession)
       newSession.copy(id = id)
   }
+
+    override fun observeActiveSession(): Flow<Session?> = sessionDao.observeActiveSession()
+
+    override suspend fun endSession(session: Session): SessionOutcome? = mutex.withLock {
+        val current = sessionDao.getById(session.id) ?: return@withLock null
+        if (current.status != SessionStatus.STARTED && current.status != SessionStatus.PAUSED) return@withLock null
+        val now = timeProvider.now()
+        if (timeProvider.remainingSeconds(current, now) == 0L) {
+            markCompleted(current)
+            return@withLock SessionOutcome(goalCompleted = true, focusedSeconds = current.allocatedSeconds, remainingTodaySeconds = 0L)
+        }
+        val focused = markInterrupted(current, now)
+        val dailyGoal = dailyGoalDao.getById(current.dailyGoalId)
+        SessionOutcome(
+            goalCompleted = false,
+            focusedSeconds = focused,
+            remainingTodaySeconds = dailyGoal?.let { it.allocatedSeconds - it.completedSeconds }?.coerceAtLeast(0L) ?: 0L
+        )
+    }
+
+    override suspend fun endActiveSessionForGoal(goalId: Long) = mutex.withLock {
+        val active = sessionDao.getActiveSession() ?: return@withLock
+        if (dailyGoalDao.getById(active.dailyGoalId)?.goalId != goalId) return@withLock
+        markInterrupted(active, timeProvider.now())
+        Unit
+    }
 
     override suspend fun pauseSession(session: Session): Session = mutex.withLock {
         val current = sessionDao.getById(session.id) ?: return@withLock session
@@ -115,9 +139,37 @@ private val dailyGoalDao: DailyGoalDao,
         }
     }
 
+    // Caller must hold [mutex] and pass a fresh copy of the session. Credits
+    // the time actually spent to today's goal and returns it.
+    private suspend fun markInterrupted(session: Session, now: java.time.Instant): Long {
+        val focused = session.allocatedSeconds - timeProvider.remainingSeconds(session, now)
+        sessionDao.update(
+            session.copy(
+                status = SessionStatus.INTERRUPTED,
+                endedAt = now,
+                runningSince = null,
+                elapsedSeconds = focused,
+                completedSeconds = focused
+            )
+        )
+        dailyGoalDao.getById(session.dailyGoalId)?.let { dailyGoal ->
+            dailyGoalDao.update(
+                dailyGoal.copy(completedSeconds = (dailyGoal.completedSeconds + focused).coerceAtMost(dailyGoal.allocatedSeconds))
+            )
+        }
+        return focused
+    }
+
     // Caller must hold [mutex] and pass a fresh copy of the session.
     private suspend fun markCompleted(session: Session) {
-        sessionDao.update(session.copy(status = SessionStatus.COMPLETED, runningSince = null))
+        sessionDao.update(
+            session.copy(
+                status = SessionStatus.COMPLETED,
+                runningSince = null,
+                endedAt = timeProvider.now(),
+                completedSeconds = session.allocatedSeconds
+            )
+        )
         dailyGoalDao.getById(session.dailyGoalId)?.let { dailyGoal ->
             dailyGoalDao.update(
                 dailyGoal.copy(status = GoalStatus.COMPLETED, completedSeconds = dailyGoal.allocatedSeconds)

@@ -5,7 +5,9 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -51,6 +53,11 @@ class BlockedAppActivity : ComponentActivity() {
     private var blockInfo by mutableStateOf<BlockInfo?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Same light system bars as the main app (dark icons on cream).
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+        )
         super.onCreate(savedInstanceState)
         blockInfo = intent.toBlockInfo()
 

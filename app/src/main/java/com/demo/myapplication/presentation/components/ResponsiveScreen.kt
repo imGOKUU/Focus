@@ -13,6 +13,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import com.demo.myapplication.presentation.theme.FocusBackgroundDeep
+import com.demo.myapplication.presentation.theme.FocusSunAccent
 import androidx.compose.ui.unit.dp
 
 /**
@@ -46,7 +52,26 @@ fun ResponsiveScreen(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(MaterialTheme.colorScheme.background)
+            .drawBehind {
+                // Two soft warm glows - peach light from the top corner, a
+                // deeper cream pooling at the bottom - so the page has some
+                // atmosphere behind the cards instead of being a flat fill.
+                drawRect(
+                    Brush.radialGradient(
+                        colors = listOf(FocusSunAccent.copy(alpha = 0.14f), Color.Transparent),
+                        center = Offset(size.width * 0.95f, 0f),
+                        radius = size.maxDimension * 0.6f
+                    )
+                )
+                drawRect(
+                    Brush.radialGradient(
+                        colors = listOf(FocusBackgroundDeep.copy(alpha = 0.9f), Color.Transparent),
+                        center = Offset(0f, size.height),
+                        radius = size.maxDimension * 0.7f
+                    )
+                )
+            },
         contentAlignment = Alignment.TopCenter
     ) {
         val compactWidthBreakpoint = 600.dp

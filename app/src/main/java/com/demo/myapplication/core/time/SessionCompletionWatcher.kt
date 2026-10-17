@@ -27,6 +27,7 @@ class SessionCompletionWatcher @Inject constructor(
     private val sessionDao: SessionDao,
     private val sessionRepository: SessionRepository,
     private val timeProvider: TimeProvider,
+    private val sessionEndAlarm: SessionEndAlarm,
     @ApplicationScope private val applicationScope: CoroutineScope
 ) {
     fun start() {
@@ -34,6 +35,13 @@ class SessionCompletionWatcher @Inject constructor(
             // collectLatest restarts the wait whenever the session changes
             // (paused, resumed, completed, replaced).
             sessionDao.observeActiveSession().collectLatest { session ->
+                // Backstop for when this process is frozen in the background.
+                if (session?.status == SessionStatus.STARTED) {
+                    val remainingNow = timeProvider.remainingSeconds(session, timeProvider.now())
+                    sessionEndAlarm.schedule(timeProvider.now().toEpochMilli() + remainingNow * 1000)
+                } else {
+                    sessionEndAlarm.cancel()
+                }
                 if (session == null) return@collectLatest
                 var remaining = timeProvider.remainingSeconds(session, timeProvider.now())
                 while (remaining > 0 && session.status == SessionStatus.STARTED) {

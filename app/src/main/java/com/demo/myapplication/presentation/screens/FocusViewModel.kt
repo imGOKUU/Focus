@@ -11,6 +11,7 @@ import com.demo.myapplication.domain.usecase.GetGoalByIdUseCase
 import com.demo.myapplication.domain.usecase.GetGoalsUseCase
 import com.demo.myapplication.domain.usecase.SessionUsecase
 import com.demo.myapplication.di.ApplicationScope
+import com.demo.myapplication.domain.repository.SessionOutcome
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +29,12 @@ data class UiState(
     val remainingSeconds:Long = 0L,
     val blockedApps:Int=0,
     val isPaused: Boolean = false,
-    val isCompleted: Boolean = false
+    val isCompleted: Boolean = false,
+    // Set once the session is over (time ran out or ended early) - the
+    // screen hands off to the session result screen.
+    val outcome: SessionOutcome? = null,
+    // Nothing left to run today for this goal - the screen just closes.
+    val isUnavailable: Boolean = false
 )
 @HiltViewModel
 class FocusViewModel @Inject constructor (
@@ -56,6 +62,9 @@ class FocusViewModel @Inject constructor (
                 session = sessionUsecase.resumeSession(session)
             }
             currentSession=session
+            if (session == null) {
+                _uiState.update { it.copy(isUnavailable = true) }
+            }
             if(session!=null){
                 _uiState.update {it.copy(totalSeconds = session.allocatedSeconds)}
                 while(isActive){
@@ -70,10 +79,32 @@ class FocusViewModel @Inject constructor (
                     }
                     if (remainingSeconds == 0L) {
                         sessionUsecase.completeSession(activeSession)
-                        _uiState.update { it.copy(isCompleted = true) }
+                        _uiState.update {
+                            it.copy(
+                                isCompleted = true,
+                                outcome = SessionOutcome(
+                                    goalCompleted = true,
+                                    focusedSeconds = goal?.dailyDurationSeconds ?: activeSession.allocatedSeconds,
+                                    remainingTodaySeconds = 0L
+                                )
+                            )
+                        }
                         break
                     }
+                    // Ended early from this screen - stop counting.
+                    if (_uiState.value.outcome != null) break
                     delay(1_000.milliseconds)
+                }
+            }
+        }
+        // Pause/Resume can also come from the notification - follow the
+        // database so this screen never shows a stale running/paused state.
+        viewModelScope.launch {
+            sessionUsecase.observeActiveSession().collect { stored ->
+                val current = currentSession
+                if (stored != null && current != null && stored.id == current.id) {
+                    currentSession = stored
+                    _uiState.update { it.copy(isPaused = stored.status == SessionStatus.PAUSED) }
                 }
             }
         }
@@ -92,6 +123,17 @@ class FocusViewModel @Inject constructor (
     fun pause() = updateSession { sessionUsecase.pauseSession(it) }
 
     fun resume() = updateSession { sessionUsecase.resumeSession(it) }
+
+    // Application scope for the same reason as pause/resume: the write must
+    // finish even though the screen navigates away right after.
+    fun endSession() {
+        applicationScope.launch(Dispatchers.Main.immediate) {
+            val session = currentSession ?: return@launch
+            val outcome = sessionUsecase.endSession(session) ?: return@launch
+            currentSession = null
+            _uiState.update { it.copy(outcome = outcome) }
+        }
+    }
 
     private fun updateSession(change: suspend (Session) -> Session) {
         applicationScope.launch(Dispatchers.Main.immediate) {

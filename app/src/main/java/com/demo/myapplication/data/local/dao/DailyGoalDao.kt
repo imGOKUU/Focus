@@ -15,6 +15,10 @@ interface DailyGoalDao {
     @Query("SELECT * FROM daily_goals WHERE date = :date ORDER BY id ASC")
     fun observeForDate(date: LocalDate): Flow<List<DailyGoal>>
 
+    // Inclusive range - one month of history at a time.
+    @Query("SELECT * FROM daily_goals WHERE date BETWEEN :start AND :end ORDER BY date ASC, id ASC")
+    fun observeBetween(start: LocalDate, end: LocalDate): Flow<List<DailyGoal>>
+
     @Query("SELECT * FROM daily_goals WHERE id = :id")
     suspend fun getById(id: Long): DailyGoal?
 

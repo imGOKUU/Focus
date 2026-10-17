@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon (Android 13+) silhouette of the Gelu mark: cube, drip and drop. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M45,34H63Q72,34 72,43V61Q72,70 63,70H45Q36,70 36,61V43Q36,34 45,34Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M57.5,69.9Q59.8,69.9 60.2,72.6Q60.7,76.2 63,76.2Q65.3,76.2 65.3,73.4Q65.3,70.6 67,69.9Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M63,79.5Q65.6,82.4 65.6,84.1A2.6,2.6 0,0 1,60.4 84.1Q60.4,82.4 63,79.5Z" />
+</vector>

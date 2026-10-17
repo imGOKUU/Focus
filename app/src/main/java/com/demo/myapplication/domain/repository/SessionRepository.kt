@@ -1,9 +1,28 @@
 package com.demo.myapplication.domain.repository
 
 import com.demo.myapplication.data.local.entity.Session
+import kotlinx.coroutines.flow.Flow
+
+/** What a finished session amounted to - shown on the session result screen. */
+data class SessionOutcome(
+  val goalCompleted: Boolean,
+  val focusedSeconds: Long,
+  val remainingTodaySeconds: Long
+)
 
 interface SessionRepository{
-  suspend  fun startOrAttachSession(goalId:Long,dailyAllocatedSeconds:Long): Session
+  // Null when today's time for this goal is already used up - there is
+  // nothing left to start.
+  suspend  fun startOrAttachSession(goalId:Long,dailyAllocatedSeconds:Long): Session?
+
+  fun observeActiveSession(): Flow<Session?>
+
+  // Ends a running/paused session early. Time already spent is credited to
+  // today's goal (honestly - no completion), the rest stays available.
+  suspend fun endSession(session: Session): SessionOutcome?
+
+  // Ends whatever session is active for this goal (e.g. the goal is deleted).
+  suspend fun endActiveSessionForGoal(goalId: Long)
 
   suspend fun pauseSession(session: Session): Session
 

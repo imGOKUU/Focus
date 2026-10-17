@@ -14,6 +14,10 @@ interface GoalDao {
     @Query("SELECT * FROM goals WHERE isActive = 1 ORDER BY id ASC")
     fun observeActiveGoals(): Flow<List<Goal>>
 
+    // Including deleted (inactive) goals - history still needs their names.
+    @Query("SELECT * FROM goals ORDER BY id ASC")
+    fun observeAllGoals(): Flow<List<Goal>>
+
     @Query("SELECT * FROM goals WHERE id = :goalId")
     suspend fun getGoalById(goalId: Long): Goal?
 
@@ -32,6 +36,15 @@ interface GoalDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertBlockedApp(app: BlockedApp): Long
+
+    @Query("SELECT * FROM blocked_apps")
+    fun observeAllBlockedApps(): Flow<List<BlockedApp>>
+
+    @Query("SELECT * FROM blocked_apps WHERE goalId = :goalId")
+    suspend fun getBlockedApps(goalId: Long): List<BlockedApp>
+
+    @Query("DELETE FROM blocked_apps WHERE goalId = :goalId")
+    suspend fun clearBlockedApps(goalId: Long)
 
     @Query("DELETE FROM blocked_apps WHERE goalId = :goalId AND packageName = :packageName")
     suspend fun removeBlockedApp(goalId: Long, packageName: String)

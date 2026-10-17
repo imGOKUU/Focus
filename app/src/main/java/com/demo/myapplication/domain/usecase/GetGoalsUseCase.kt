@@ -17,6 +17,10 @@ class GetGoalsUseCase @Inject constructor(
        return repository.observeBlockedApps(goalId)
     }
 
+    fun observeAllBlockedApps(): Flow<List<BlockedApp>> = repository.observeAllBlockedApps()
+
+    suspend fun getBlockedApps(goalId: Long): List<BlockedApp> = repository.getBlockedApps(goalId)
+
     fun observeTodayDailyGoals(): Flow<List<DailyGoal>> {
         return repository.observeTodayDailyGoals()
     }
