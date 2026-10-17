@@ -416,9 +416,6 @@ private fun Wheel(
     modifier: Modifier = Modifier
 ) {
     val initialIndex = values.indexOf(selectedValue).coerceAtLeast(0)
-    // contentPadding already offsets the list by visibleRows / 2 rows, so the
-    // first visible item IS the centered one - no -1 adjustment (that centered
-    // the value below the selection, and rotation then knocked hours down by one).
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = initialIndex
     )
