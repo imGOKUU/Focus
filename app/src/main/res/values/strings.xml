@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">Gelu</string>
-    <string name="accessibility_service_description">Lets Gelu notice when you open an app you\'ve chosen to block during a session, so it can show a gentle reminder instead. It can\'t read what\'s on your screen.</string>
+    <string name="app_name">Meltide</string>
+    <string name="accessibility_service_description">Lets Meltide notice when you open an app you\'ve chosen to block during a session, so it can show a gentle reminder instead. It can\'t read what\'s on your screen.</string>
 </resources>

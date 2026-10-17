@@ -3,22 +3,22 @@
 
     <!-- App theme. The cream window background means there's never a white
          flash behind the first Compose frame. -->
-    <style name="Theme.MyApplication" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@color/gelu_cream</item>
+    <style name="Theme.Meltide" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/meltide_cream</item>
         <!-- Dark status-bar icons on the cream background. Set in the theme
              (not just enableEdgeToEdge) because the splash-screen hand-off
              re-applies the post-splash theme's system-bar appearance. -->
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
-    <!-- Launch theme: the Gelu mark on cream while the app decides whether
+    <!-- Launch theme: the Meltide mark on cream while the app decides whether
          to open the intro or Today (see MainActivity). -->
-    <style name="Theme.Gelu.Starting" parent="Theme.SplashScreen.IconBackground">
-        <item name="windowSplashScreenBackground">@color/gelu_cream</item>
+    <style name="Theme.Meltide.Starting" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">@color/meltide_cream</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon_animated</item>
-        <item name="windowSplashScreenIconBackgroundColor">@color/gelu_slate</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/meltide_slate</item>
         <item name="windowSplashScreenAnimationDuration">900</item>
-        <item name="postSplashScreenTheme">@style/Theme.MyApplication</item>
+        <item name="postSplashScreenTheme">@style/Theme.Meltide</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

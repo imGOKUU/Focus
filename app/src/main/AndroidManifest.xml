@@ -14,11 +14,11 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MyApplication">
+        android:theme="@style/Theme.Meltide">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.Gelu.Starting"
+            android:theme="@style/Theme.Meltide.Starting"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -32,7 +32,7 @@
             android:exported="false"
             android:launchMode="singleTask"
             android:excludeFromRecents="true"
-            android:theme="@style/Theme.MyApplication" />
+            android:theme="@style/Theme.Meltide" />
 
         <!-- Pause/Resume buttons on the session notification; only reachable
              through this app's own PendingIntents. -->

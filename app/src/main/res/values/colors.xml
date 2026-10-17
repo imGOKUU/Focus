@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Mirrors FocusBackground / FocusPrimaryDark in presentation/theme/Color.kt. -->
-    <color name="gelu_cream">#FFF7F5EF</color>
-    <color name="gelu_slate">#FF263640</color>
+    <color name="meltide_cream">#FFF7F5EF</color>
+    <color name="meltide_slate">#FF263640</color>
 </resources>

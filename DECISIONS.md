@@ -229,3 +229,23 @@ A running record of the choices made while building this app and *why* — separ
 Each suggestion was checked against the running app before acting. **Fixed:** status-bar icons were light on cream (theme never set `windowLightStatusBar`; the splash hand-off also reset `enableEdgeToEdge`, so it's set in the theme too); sub-minute durations ("14s of 1m") now read "<1m"; Today summary shows done + planned with a bar, so "left today" is unambiguous; completed goals less faded; thicker progress bars; "Continue X" for part-done goals; blocked apps shown with their real icons; visible sheet drag handle; Focus screen content centred with a larger timer, a running/paused pill and a smooth pause fade; **Focus screen no longer claims apps are blocked when the Accessibility service is off** (shows "Blocking is off · Turn on"); calendar selected day filled, today ringed, clearer legend and stat labels, a day-progress bar; Settings explains why notification toggles are disabled; greeting/date split so large fonts wrap cleanly (verified at 1.5x).
 
 **Rejected as already done or by design:** end-session confirmation and completion summary (exist since #16), daily progress updating on session end (Room-driven), animated ring, nav-bar overlap in History (content is inset-padded and scrolls), toggle accessibility (full-row `Role.Switch`), button proportions/back buttons/sheet animation (deliberate and consistent).
+
+---
+
+## 21. Real migrations (no destructive fallback) and session-logic tests
+
+**Migrations:** Room schemas are exported to `app/schemas/` (commit them - they're the record migrations are tested against). Version 2 is the baseline every existing install has; `FocusMigrations.MIGRATION_2_3` adds indexes for the hot lookups (today's record per goal, days in a range, the active session, a goal's blocked apps). `fallbackToDestructiveMigration()` is gone: a missing migration now fails loudly in testing instead of wiping users' history. Destructive fallback remains only for downgrades (dev installs of older builds - Play never downgrades). **Rule for every future schema change:** bump the version, add a `Migration` to `FocusMigrations.ALL`, add a case to `FocusMigrationTest`.
+
+**Tests:** `SessionRepositoryImplTest` (JVM, in-memory fake DAOs + a hand-moved clock) covers the time-accounting rules - start/attach, clock-based remaining, pause/resume, crediting on early end and on goal switch, carrying today's remainder into the next session, completion, a completed goal refusing to restart, stale copies never reviving a finished session, deleting a goal mid-session, and midnight. `TimeFormatTest` pins the rounding rules (time left rounds up, time given rounds down, never seconds). `FocusMigrationTest` (instrumented, `MigrationTestHelper`) migrates real rows and reopens through Room/DAOs.
+
+**Running the instrumented tests without losing app data:** `connectedAndroidTest` uninstalls the app afterwards. To keep a device's data: `./gradlew installDebug installDebugAndroidTest` then `adb shell am instrument -w com.demo.myapplication.test/androidx.test.runner.AndroidJUnitRunner`.
+
+---
+
+## 22. Name and package: Meltide / com.meltide.app; release build; CI
+
+**Name:** **Meltide** (melt + tide), chosen by the user - replaces Gelu everywhere (app label, Accessibility description, copy, themes: `Theme.Meltide`, `Theme.Meltide.Starting`). Package / `applicationId` / `namespace`: **`com.meltide.app`** (reverse-domain form; "meltide" alone isn't a valid Android package). It becomes permanent on the first Play upload. Gradle project name is now "Meltide". Internal class names (`FocusDatabase`, `FocusApplication`, `FocusTheme`...) were left as-is - invisible to users and renaming them is churn. Because the package changed, it installs as a new app; data from the old `com.demo.myapplication` install doesn't carry over.
+
+**Release build:** R8 enabled (`optimization { enable = true }` + `proguard-android-optimize.txt` + `proguard-rules.pro`, which only keeps line numbers - every library brings its own rules). Signing reads a git-ignored `keystore.properties`; without it the release is built unsigned. Verified by signing the R8 build with the debug key and running every main flow on the emulator with zero crashes. See RELEASING.md.
+
+**CI:** `.github/workflows/android.yml` - lint, unit tests, debug and release builds on every push/PR to main; a second job runs the instrumented tests (including migrations) on an emulator.
